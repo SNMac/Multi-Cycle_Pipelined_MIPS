@@ -11,7 +11,10 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="034f03e5-492f-4657-bdcf-c7358f314ad9" name="변경" comment="Revert &quot;Pipelined MIPS (WIP)&quot;&#10;&#10;This reverts commit d9d93baa" />
+    <list default="true" id="034f03e5-492f-4657-bdcf-c7358f314ad9" name="변경" comment="Revert &quot;Pipelined MIPS (WIP)&quot;&#10;&#10;This reverts commit d9d93baa">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -53,7 +56,7 @@
     &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
     &quot;cmake.loaded.for.project&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;/Users/macmillan/Desktop/Projects/CLionProjects/CAMP_Project3&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;
   }
 }</component>
   <component name="RunManager">
@@ -88,7 +91,8 @@
       <workItem from="1652084225451" duration="15000" />
       <workItem from="1652084523292" duration="8164000" />
       <workItem from="1652110466700" duration="265000" />
-      <workItem from="1652110733721" duration="1000" />
+      <workItem from="1652110733721" duration="798000" />
+      <workItem from="1652111535479" duration="71000" />
     </task>
     <task id="LOCAL-00001" summary="Pipelined MIPS (WIP)">
       <created>1652076914954</created>
@@ -104,7 +108,14 @@
       <option name="project" value="LOCAL" />
       <updated>1652109296764</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Revert &quot;Pipelined MIPS (WIP)&quot;&#10;&#10;This reverts commit d9d93baa">
+      <created>1652110884547</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1652110884547</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -135,7 +146,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Pipelined MIPS (WIP)" />
-    <option name="LAST_COMMIT_MESSAGE" value="Pipelined MIPS (WIP)" />
+    <MESSAGE value="Revert &quot;Pipelined MIPS (WIP)&quot;&#10;&#10;This reverts commit d9d93baa" />
+    <option name="LAST_COMMIT_MESSAGE" value="Revert &quot;Pipelined MIPS (WIP)&quot;&#10;&#10;This reverts commit d9d93baa" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
