@@ -1,4 +1,3 @@
-#pragma once
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -21,19 +20,33 @@ typedef struct _INSTRUCTION {  // Instruction
 /* Control signals */
 typedef struct _CONTROL_SIGNAL {  // Control signals
 	bool PCBranch, ALUSrc, RegWrite, MemRead, MemWrite, SignZero, Branch, BranchNot,
-        Zero, Shift, Jump[2], RegDst[2], MemtoReg[2], ForwardA[2], ForwardB[2];
+        Zero, Shift, Jump[2], RegDst[2], MemtoReg[2];
     char ALUOp;
 }CONTROL_SIGNAL;
-// Jump == 0) BranchMux, 1) JumpAddr, 2) R[rs]
-// RegDst == 0) rt, 1) rd, 2) $31
-// MemtoReg == 0) Writedata = ALUresult, 1) Writedata = Readdata, 2) Writedata = PC + 8, 3) Writedata = upperimm
 
 typedef struct _ALU_CONTROL_SIGNAL {  // ALU control signals
 	bool ArthOvfl;
     char ALUSig;
 }ALU_CONTROL_SIGNAL;
 
-/* Pipelines */
+typedef struct _FORWARD_SIGNAL {
+    bool ForwardA[2], ForwardB[2];
+}FORWARD_SIGNAL;
+
+typedef struct _HAZARD_DETECTION_SIGNAL {
+    bool PCWrite, IFIDWrite, ControlNOP;
+}HAZARD_DETECTION_SIGNAL;
+
+//////////////////////////////// Stages.c ////////////////////////////////
+/* Stages */
+void IF();  // Instruction Fetch
+void ID();  // Instruction Decode
+void EX();  // EXecute
+void MEM();  // MEMory access
+void WB();  // Write Back
+
+//////////////////////////////// Units.c ////////////////////////////////
+/* Pipelines units */
 typedef struct _IFID {  // IF/ID pipeline
     bool valid;
     uint32_t instruction;
@@ -76,19 +89,12 @@ typedef struct _MEMWB {  // MEM/WB pipeline
     bool MemtoReg[2], RegWrite;
 }MEMWB;
 
-/* Stages */
-void IF();  // Instruction Fetch
-void ID();  // Instruction Decode, register fetch
-void EX();  // EXecute, address calcuate
-void MEM();  // MEMory access
-void WB();  // Write Back
-
 /* Data units */
 uint32_t InstMem(uint32_t Readaddr);  // Instruction memory
 uint32_t* RegsRead(uint8_t Readreg1, uint8_t Readreg2);  // Registers (ID)
 void RegsWrite(uint8_t Writereg, uint32_t Writedata);  // Register (WB)
 uint32_t DataMem(uint32_t Addr, uint32_t Writedata);  // Data memory
-void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg);
+
 
 uint32_t ALU(uint32_t input1, uint32_t input2);  // ALU
 uint32_t MUX(uint32_t input1, uint32_t input2, bool signal);  // signal == 0) input1, 1) input2
@@ -98,10 +104,16 @@ uint32_t MUX_4(uint32_t input1, uint32_t input2, uint32_t input3, uint32_t input
 /* Control units */
 void CtrlUnit(uint8_t opcode, uint8_t funct);  // Control unit
 void ALUCtrlUnit(uint8_t funct);  // ALU control unit
-void HazardDetectUnit();  // Hazard detection unit
+void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg);
+void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt);  // Hazard detection unit
 
 /* select ALU operation */
 char Rformat(uint8_t funct);  // select ALU operation by funct (R-format)
 
 /* Overflow exception */
 void OverflowException();  // Overflow exception
+
+#ifndef CAMP_PROJECT3_HEADER_H
+#define CAMP_PROJECT3_HEADER_H
+
+#endif //CAMP_PROJECT3_HEADER_H

@@ -7,7 +7,7 @@ MEMWB memwb[2];
 
 uint32_t Memory[0x400000];
 uint32_t PC;
-int32_t R[32];
+uint32_t R[32];
 int Rcount;  // R-format instruction count
 int Icount;  // I-format instruction count
 int Jcount;  // J-format instruction count
