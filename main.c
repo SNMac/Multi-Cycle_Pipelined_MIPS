@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     filename = argv[1];
   }
   else {
-    filename = "fib_jalr.bin";
+    filename = "Simple.bin";
   }
   
   FILE* fp = fopen(filename, "rb");
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
       fprintf(stderr, "\nERROR: PC points over the end of instructions\n");
       PC = 0xffffffff;
     }
-    if (!(ifid[1].valid | idex[1].valid | exmem[1].valid | memwb[1].valid)) {
+    if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
         break;
     }
     // TODO
@@ -69,18 +69,19 @@ int main(int argc, char* argv[]) {
     EX();
     MEM();
     WB();
-    if (ifid[1].valid) {
-        ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
-    }
-    if (idex[1].valid) {
-        idex[1] = idex[0];  // ID/EX pipeline hands data to EX
-    }
-    if (exmem[1].valid) {
-        exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM
-    }
-    if (memwb[1].valid) {
-        memwb[1] = memwb[0];  // MEM/WB pipeline hands data to WB
-    }
+    ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
+    idex[1] = idex[0];  // ID/EX pipeline hands data to EX
+    exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM
+    memwb[1] = memwb[0];  // MEM/WB pipeline hands data to WB
+    printf("\n");
+    IFIDDebug();
+    printf("\n");
+    IDEXDebug();
+    printf("\n");
+    EXMEMDebug();
+    printf("\n");
+    MEMWBDebug();
+    printf("\n");
     cycle++;
     printf("\n===================CC %d===================\n", cycle);
   }

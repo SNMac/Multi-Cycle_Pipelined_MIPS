@@ -65,7 +65,7 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata) {
         Memcount++;
     }
     else if (exmem[1].MemRead == 0 && exmem[1].MemWrite == 1) {  // MemRead De-asserted, MemWrite asserted
-        if (Addr > 0x1000000) {  // loading outside of memory
+        if (Addr > 0x1000000) {  // Writing outside of memory
             fprintf(stderr, "ERROR: Accessing outside of memory\n");
             exit(EXIT_FAILURE);
         }
@@ -80,18 +80,19 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata) {
 void CheckBranch(void) {  // Check if PC is branch
     for (BranchPred.BTBindex = 0; BranchPred.BTBindex < BTBMAX; BranchPred.BTBindex++) {  // Send PC to BTB
         if (BranchPred.BTB[BranchPred.BTBindex][0] == BranchPred.instPC) {  // PC found in BTB
-            BranchPred.predict = 1;
+            BranchPred.Predict = 1;
             break;  // Send out predicted PC
         }
     }
     if (BranchPred.BTBindex == BTBMAX) {  // PC not found in BTB
+        BranchPred.AddressHit = 0;
         return;
     }
     if (BranchPred.BTB[BranchPred.BTBindex][2] == 2 || BranchPred.BTB[BranchPred.BTBindex][2] == 3)  {
-        PC = BranchPred.BTB[BranchPred.BTBindex][1];  // Predict branch taken
+        BranchPred.AddressHit = 1;  // Predict branch taken
     }
     else {
-        PC = BranchPred.instPC + 4;  // Predict branch not taken
+        BranchPred.AddressHit = 0;  // Predict branch not taken
     }
     BranchPred.BTB[BranchPred.BTBindex][3]++;
     return;
@@ -109,6 +110,7 @@ void UpdatePredictBits(void) {  // Update predict bits
 }
 
 void BranchBufferWrite(uint32_t Address, bool brjp) {  // Write PC and BranchAddr to BTB
+    // brjp == 0) beq or bne, 1) j or jal
     if (BranchPred.BTBsize >= BTBMAX) {  // BTB has no space
         uint32_t min = BranchPred.BTB[0][3];
         int minindex;
@@ -276,6 +278,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x8 :  // addi
+            printf("name : addi\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -291,6 +294,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x9 :  // addiu
+            printf("name : addiu\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -306,6 +310,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xc :  // andi
+            printf("name : andi\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -321,6 +326,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x4 :  // beq
+            printf("name : beq\n");
             Icount++;
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
@@ -333,6 +339,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x5 :  // bne
+            printf("name : bne\n");
             Icount++;
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
@@ -345,6 +352,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x2 :  // j
+            printf("name : j\n");
             Jcount++;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
@@ -356,6 +364,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x3 :  // jal
+            printf("name : jal\n");
             Jcount++;
             ctrlSig.RegWrite = 1;
             ctrlSig.RegDst[1] = 1; ctrlSig.RegDst[0] = 0;
@@ -365,6 +374,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
         
         case 0xf :  // lui
+            printf("name : lui\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -379,6 +389,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x23 :  // lw
+            printf("name : lw\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -394,6 +405,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xd :  // ori
+            printf("name : ori\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -409,6 +421,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xa :  // slti
+            printf("name : slti\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -424,6 +437,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xb :  // sltiu
+            printf("name : sltiu\n");
             Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
@@ -439,6 +453,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x2B :  // sw
+            printf("name : sw\n");
             Icount++;
             ctrlSig.ALUSrc = 1;
             ctrlSig.RegWrite = 0;
@@ -523,11 +538,9 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt) {
     memset(&hzrddetectSig, 0, sizeof(HAZARD_DETECTION_SIGNAL));
     if (idex[1].MemRead && (IDEXrt == IFIDrs) || (IDEXrt == IFIDrt)) {
-        hzrddetectSig.PCWrite = 0;
-        hzrddetectSig.IFIDWrite = 0;
+        hzrddetectSig.PCnotWrite = 1;
+        hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
-        // TODO
-        //  stall the pipeline
     }
 }
 
@@ -535,44 +548,58 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt) {
 /*============================Select ALU operation============================*/
 
 char Rformat(uint8_t funct) {  // select ALU operation by funct (R-format)
+    printf("name : ");
     switch (funct) {
         case 0x20 :  // add
+            printf ("add\n");
             return '+';
 
         case 0x21 :  // addu
+            printf("addu\n");
             return '+';
 
         case 0x24 :  // and
+            printf("and\n");
             return '&';
 
         case 0x08 :  // jr
+            printf("jr\n");
             return '+';
         
         case 0x9 :  // jalr
+            printf("jalr\n");
             return '+';
 
         case 0x27 :  // nor
+            printf("nor\n");
             return '~';
 
         case 0x25 :  // or
+            printf("or\n");
             return '|';
 
         case 0x2a :  // slt
+            printf("slt\n");
             return '<';
 
         case 0x2b :  // sltu
+            printf("sltu\n");
             return '>';
 
         case 0x00 :  // sll
+            printf("sll\n");
             return '{';
 
         case 0x02 :  // srl
+            printf("srl\n");
             return '}';
 
         case 0x22 :  // sub
+            printf("sub\n");
             return '-';
 
         case 0x23 :  // subu
+            printf("subu\n");
             return '-';
 
         default:

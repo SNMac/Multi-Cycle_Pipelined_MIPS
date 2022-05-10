@@ -11,8 +11,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="034f03e5-492f-4657-bdcf-c7358f314ad9" name="변경" comment="added testbin">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="034f03e5-492f-4657-bdcf-c7358f314ad9" name="변경" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Stages.c" beforeDir="false" afterPath="$PROJECT_DIR$/Stages.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Units.c" beforeDir="false" afterPath="$PROJECT_DIR$/Units.c" afterDir="false" />
@@ -102,7 +101,7 @@
       <workItem from="1652112515940" duration="450000" />
       <workItem from="1652113032039" duration="73000" />
       <workItem from="1652115365312" duration="7000" />
-      <workItem from="1652145317270" duration="26371000" />
+      <workItem from="1652145317270" duration="36783000" />
     </task>
     <task id="LOCAL-00001" summary="Pipelined MIPS (WIP)">
       <created>1652076914954</created>
@@ -139,7 +138,14 @@
       <option name="project" value="LOCAL" />
       <updated>1652112944602</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="added simple branch predictor (not tested)&#10;added End Of Execution">
+      <created>1652179921802</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1652179921802</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -173,7 +179,8 @@
     <MESSAGE value="Pipelined MIPS (WIP)" />
     <MESSAGE value="Revert &quot;Pipelined MIPS (WIP)&quot;&#10;&#10;This reverts commit d9d93baa" />
     <MESSAGE value="added testbin" />
-    <option name="LAST_COMMIT_MESSAGE" value="added testbin" />
+    <MESSAGE value="added simple branch predictor (not tested)&#10;added End Of Execution" />
+    <option name="LAST_COMMIT_MESSAGE" value="added simple branch predictor (not tested)&#10;added End Of Execution" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

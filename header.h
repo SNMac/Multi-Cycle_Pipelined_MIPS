@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
-#define BTBMAX 128
+#define BTBMAX 32
 
 typedef struct _INSTRUCTION {  // Instruction
     uint32_t address;
@@ -34,11 +34,12 @@ typedef struct _FORWARD_SIGNAL {  // Forward unit signals
 }FORWARD_SIGNAL;
 
 typedef struct _HAZARD_DETECTION_SIGNAL {  // Hazard detection unit signals
-    bool PCWrite, IFIDWrite, ControlNOP;
+    bool PCnotWrite, IFIDnotWrite, ControlNOP;
 }HAZARD_DETECTION_SIGNAL;
 
 typedef struct _BRANCH_PREDICT {
-    bool predict;  // 1) BTB has the PC value, 0) BTB hasn't the PC value
+    bool Predict;  // 1) BTB has the PC value, 0) BTB hasn't the PC value
+    bool AddressHit;
     int BTBindex;
     int BTBsize;
     uint32_t instPC;
@@ -51,11 +52,16 @@ typedef struct _BRANCH_PREDICT {
 
 //////////////////////////////// Stages.c ////////////////////////////////
 /* Stages */
-void IF();  // Instruction Fetch
-void ID();  // Instruction Decode
-void EX();  // EXecute
-void MEM();  // MEMory access
-void WB();  // Write Back
+void IF(void);  // Instruction Fetch
+void ID(void);  // Instruction Decode
+void EX(void);  // EXecute
+void MEM(void);  // MEMory access
+void WB(void);  // Write Back
+
+void IFIDDebug(void);
+void IDEXDebug(void);
+void EXMEMDebug(void);
+void MEMWBDebug(void);
 
 //////////////////////////////// Units.c ////////////////////////////////
 /* Pipelines units */
@@ -72,7 +78,7 @@ typedef struct _IDEX {  // ID/EX pipeline
     uint8_t funct;
     uint32_t Rrs;
     uint32_t Rrt;
-    int32_t extimm;
+    uint32_t extimm;
     uint32_t upperimm;
     uint8_t rs;
     uint8_t rt;
