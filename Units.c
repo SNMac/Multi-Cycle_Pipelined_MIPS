@@ -22,6 +22,7 @@ FORWARD_SIGNAL fwrdSig;
 HAZARD_DETECTION_SIGNAL hzrddetectSig;
 
 
+
 /*============================Data units============================*/
 
 // [Instruction memory]
@@ -44,7 +45,6 @@ void RegsWrite(uint8_t Writereg, uint32_t Writedata) {
             return;
         }
         R[Writereg] = Writedata;  // GPR write enabled
-        printf("R[%d] = 0x%x (%d)\n", Writereg, R[Writereg], R[Writereg]);
         return;
     }
     else {  // RegWrite De-asserted
@@ -73,6 +73,9 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata) {
         printf("Memory[0x%08x] <- store 0x%x (%d)\n", Addr, Memory[Addr / 4], Memory[Addr / 4]);
         Memcount++;
     }
+    else {  // MemRead, MemWrite De-asserted
+        printf("There is no memory access\n");
+    }
     return Readdata;
 }
 
@@ -85,14 +88,17 @@ void CheckBranch(void) {  // Check if PC is branch
         }
     }
     if (BranchPred.BTBindex == BTBMAX) {  // PC not found in BTB
-        BranchPred.AddressHit = 0;
+        BranchPred.AddressHit = 0;  // Predict branch not taken
+        printf("BTB hasn't PC value.\n");
         return;
     }
     if (BranchPred.BTB[BranchPred.BTBindex][2] == 2 || BranchPred.BTB[BranchPred.BTBindex][2] == 3)  {
         BranchPred.AddressHit = 1;  // Predict branch taken
+        printf("BTB has PC value. Predicting branch is taken.\n");
     }
     else {
         BranchPred.AddressHit = 0;  // Predict branch not taken
+        printf("BTB has PC value. Predicting branch is not taken.\n");
     }
     BranchPred.BTB[BranchPred.BTBindex][3]++;
     return;
@@ -516,20 +522,24 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
     // EX hazard
     if (exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrs)) {
         fwrdSig.ForwardA[1] = 1; fwrdSig.ForwardA[0] = 0;  // ForwardA = 10
+        printf("ALU input1 forwarded from EX/MEM pipeline\n");
     }
     if (exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt)) {
         fwrdSig.ForwardB[1] = 1; fwrdSig.ForwardB[0] = 0;  // ForwardB = 10
+        printf("ALU input2 forwarded from EX/MEM pipeline\n");
     }
     // MEM hazard
     if (memwb[1].RegWrite && (MEMWBWritereg != 0) &&
         !( exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg != IDEXrs) ) &&
         (MEMWBWritereg == IDEXrs)) {
         fwrdSig.ForwardA[1] = 0; fwrdSig.ForwardA[0] = 1;  // ForwardA = 01
+        printf("ALU input1 forwarded from MEM/WB pipeline\n");
     }
     if (memwb[1].RegWrite && (MEMWBWritereg != 0) &&
         !( exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg != IDEXrs) ) &&
         (MEMWBWritereg == IDEXrt)) {
         fwrdSig.ForwardB[1] = 0; fwrdSig.ForwardB[0] = 1;  // ForwardB = 01
+        printf("ALU input2 forwarded from MEM/WB pipeline\n");
     }
     return;
 }
@@ -537,7 +547,8 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
 // (Hazard detection unit)
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt) {
     memset(&hzrddetectSig, 0, sizeof(HAZARD_DETECTION_SIGNAL));
-    if (idex[1].MemRead && (IDEXrt == IFIDrs) || (IDEXrt == IFIDrt)) {
+    if (idex[1].MemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
+        printf("Load-use hazard detected. Adding nop\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
@@ -611,20 +622,24 @@ char Rformat(uint8_t funct) {  // select ALU operation by funct (R-format)
 /*============================Update prediction bits============================*/
 
 uint8_t PBtaken(uint8_t Predbit) {
-    if (Predbit == 0 || Predbit == 2) {  // BHR == 00 or 10
-        return 3;  // BHR = 11
+    if (Predbit == 0 || Predbit == 2) {  // PB == 00 or 10
+        printf("Update PB to 3\n");
+        return 3;  // PB = 11
     }
-    else if (Predbit == 1) {  // BHR == 01
-        return 0;  // BHR = 00
+    else if (Predbit == 1) {  // PB == 01
+        printf("Update PB to 0\n");
+        return 0;  // PB = 00
     }
 }
 
 uint8_t PBnottaken(uint8_t Predbit) {
-    if (Predbit == 0 || Predbit == 2) {  // BHR == 00 or 10
-        return 1;  // BHR = 01
+    if (Predbit == 0 || Predbit == 2) {  // PB == 00 or 10
+        printf("Update PB to 1\n");
+        return 1;  // PB = 01
     }
-    else if (Predbit == 3) {  // BHR == 11
-        return 2;  // BHR = 10
+    else if (Predbit == 3) {  // PB == 11
+        printf("Update PB to 2\n");
+        return 2;  // PB = 10
     }
 }
 

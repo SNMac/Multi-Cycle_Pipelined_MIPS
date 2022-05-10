@@ -16,6 +16,27 @@ typedef struct _INSTRUCTION {  // Instruction
     uint16_t imm;
     uint8_t funct;
 }INSTRUCTION;
+// TODO
+//  add instruction to DEBUG
+typedef struct _DEBUGIF {
+    unsigned int IFPC;
+}DEBUGIF;
+
+typedef struct _DEBUGID {
+    unsigned int IDPC;
+}DEBUGID;
+
+typedef struct _DEBUGEX {
+    unsigned int EXPC;
+}DEBUGEX;
+
+typedef struct _DEBUGMEM {
+    unsigned int MEMPC;
+}DEBUGMEM;
+
+typedef struct _DEBUGWB {
+    unsigned int WBPC;
+}DEBUGWB;
 
 /* Control signals */
 typedef struct _CONTROL_SIGNAL {  // Control signals

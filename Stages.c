@@ -9,10 +9,15 @@ extern IDEX idex[2];
 extern EXMEM exmem[2];
 extern MEMWB memwb[2];
 extern uint32_t Memory[0x400000];
-extern uint32_t PC;
+extern uint32_t PC; extern bool PCvalid;  // PC valid bit
 extern uint32_t R[32];
 extern int takenBranch;  // taken Branch count
 extern int nottakenBranch;  // not taken Branch count
+extern DEBUGID debugid[2];
+extern DEBUGEX debugex[2];
+extern DEBUGMEM debugmem[2];
+extern DEBUGWB debugwb[2];
+
 
 // from Units.c
 extern FORWARD_SIGNAL fwrdSig;
@@ -21,24 +26,27 @@ extern BRANCH_PREDICT BranchPred;
 
 uint32_t MemtoRegMUX;
 
+
 /*============================Stages============================*/
 
 // Instruction Fetch
 void IF(void) {
-    printf("\n<<<<<<<<<<<<<IF>>>>>>>>>>>>>\n");
+    printf("\n<<<<<<<<<<<<<<<<<<<<<IF>>>>>>>>>>>>>>>>>>>>>\n");
     if (PC == 0xffffffff) {
         ifid[0].valid = 0;
-        printf("PC = 0xFFFFFFFF\n");
-        printf("****************************\n");
+        PCvalid = 0;
+        printf("End of program\n");
+        printf("Wait for finishing other stage\n");
+        printf("**********************************************\n");
         return;
     }
     printf("PC : 0x%08x\n", PC);
     BranchPred.instPC = PC;
 
     if (!(hzrddetectSig.IFIDnotWrite)) {  // save data to pipeline
+        debugid[0].IDPC = PC;
         ifid[0].instruction = InstMem(PC); ifid[0].PCadd4 = PC + 4;
         printf("Fetch instruction : 0x%08x\n", ifid[0].instruction);
-        printf("****************************\n");
     }
 
     CheckBranch();  // Check if PC is branch
@@ -49,16 +57,20 @@ void IF(void) {
     if (ctrlSig.IFIDFlush) {
         memset(&ifid, 0, sizeof(IFID));
     }
+    printf("Next PC : 0x%08x\n", PC);
+    printf("**********************************************\n");
     return;
 }
 // Instruction Decode
 void ID(void) {
-    printf("\n<<<<<<<<<<<<<ID>>>>>>>>>>>>>\n");
+    idex[0].valid = ifid[1].valid;
+    printf("\n<<<<<<<<<<<<<<<<<<<<<ID>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(ifid[1].valid)) {
         printf("IF/ID pipeline is invalid\n");
-        printf("****************************\n");
+        printf("**********************************************\n");
         return;
     }
+    printf("Processing PC : 0x%08x\n", debugid[1].IDPC);
     printf("Decode instruction : 0x%08x\n", ifid[1].instruction);
 
     INSTRUCTION inst;
@@ -81,6 +93,10 @@ void ID(void) {
 
     // Set control signals
     CtrlUnit(inst.opcode, inst.funct);
+
+    // Avoid ID-WB hazard
+    MemtoRegMUX = MUX_4(memwb[1].ALUresult, memwb[1].Readdata, memwb[1].PCadd8, memwb[1].upperimm, memwb[1].MemtoReg);
+    RegsWrite(memwb[1].Writereg, MemtoRegMUX);
 
     // Register fetch
     uint32_t* Regs_return = RegsRead(inst.rs, inst.rt);
@@ -135,12 +151,16 @@ void ID(void) {
             BranchBufferWrite(BranchAddr, 0);
         }
     }
+
+    // TODO
+    //  correcting PCBranchMUX
     uint32_t PCBranchMUX = MUX(PC + 4, BranchAddr, ctrlSig.PCBranch);
     uint32_t JumpMUX = MUX_3(PCBranchMUX, JumpAddr, Regs_return[0], ctrlSig.Jump);
-    PC = JumpMUX;
-
+    if (PCvalid) {
+        PC = JumpMUX;
+    }
     // save data to pipeline
-    idex[0].valid = ifid[1].valid;
+    debugex[0].EXPC = debugid[1].IDPC;
     idex[0].PCadd8 = ifid[1].PCadd4 + 4; idex[0].shamt = inst.shamt;
     idex[0].Rrs = Regs_return[0]; idex[0].Rrt = Regs_return[1];
     idex[0].extimm = MUX(signimm, zeroimm, ctrlSig.SignZero);
@@ -154,18 +174,20 @@ void ID(void) {
     idex[0].MemtoReg[0] = ctrlSig.MemtoReg[0]; idex[0].MemtoReg[1] = ctrlSig.MemtoReg[1];
     idex[0].RegWrite = ctrlSig.RegWrite; idex[0].ALUOp = ctrlSig.ALUOp;
 
-    printf("****************************\n");
+    printf("**********************************************\n");
     return;
 }
 
 // Execute
 void EX(void) {
-    printf("\n<<<<<<<<<<<<<EX>>>>>>>>>>>>>\n");
+    exmem[0].valid = idex[1].valid;
+    printf("\n<<<<<<<<<<<<<<<<<<<<<EX>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(idex[1].valid)) {
         printf("ID/EX pipeline is invalid\n");
-        printf("****************************\n");
+        printf("**********************************************\n");
         return;
     }
+    printf("Processing PC : 0x%08x\n", debugex[1].EXPC);
 
     // set ALU operation
     ALUCtrlUnit(idex[1].funct);
@@ -180,7 +202,7 @@ void EX(void) {
     uint32_t ALUinput2 = MUX(ForwardBMUX, idex[1].extimm, idex[1].ALUSrc);
 
     // save data to pipeline
-    exmem[0].valid = idex[1].valid;
+    debugmem[0].MEMPC = debugex[1].EXPC;
     exmem[0].ForwardBMUX = ForwardBMUX;
     exmem[0].ALUresult = ALU(ALUinput1, ALUinput2);
     exmem[0].PCadd8 = idex[1].PCadd8; exmem[0].upperimm = idex[1].upperimm;
@@ -190,23 +212,25 @@ void EX(void) {
     exmem[0].MemWrite = idex[1].MemWrite; exmem[0].MemRead = idex[1].MemRead;
     exmem[0].MemtoReg[0] = idex[1].MemtoReg[0]; exmem[0].MemtoReg[1] = idex[1].MemtoReg[1];
     exmem[0].RegWrite = idex[1].RegWrite;
-
-    printf("ALU result : 0x%08x\n", exmem[0].ALUresult);
-    printf("****************************\n");
+    printf("ALU input1 : 0x%08x (%u)\nALU input2 : 0x%08x (%u)\n", ALUinput1, ALUinput1, ALUinput2, ALUinput2);
+    printf("ALU result : 0x%08x (%u)\n", exmem[0].ALUresult, exmem[0].ALUresult);
+    printf("**********************************************\n");
     return;
 }
 
 // Memory Access
 void MEM(void) {
-    printf("\n<<<<<<<<<<<<<MEM>>>>>>>>>>>>>\n");
+    memwb[0].valid = exmem[1].valid;
+    printf("\n<<<<<<<<<<<<<<<<<<<<<MEM>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(exmem[1].valid)) {
         printf("EX/MEM pipeline is invalid\n");
-        printf("****************************\n");
+        printf("**********************************************\n");
         return;
     }
+    printf("Processing PC : 0x%08x\n", debugmem[1].MEMPC);
 
     // save data to pipeline
-    memwb[0].valid = exmem[1].valid;
+    debugwb[0].WBPC = debugmem[1].MEMPC;
     memwb[0].PCadd8 = exmem[1].PCadd8; memwb[0].ALUresult = exmem[1].ALUresult;
     memwb[0].upperimm = exmem[1].upperimm; memwb[0].Writereg = exmem[1].Writereg;
     // Memory access
@@ -215,43 +239,39 @@ void MEM(void) {
     memwb[0].MemtoReg[0] = exmem[1].MemtoReg[0]; memwb[0].MemtoReg[1] = exmem[1].MemtoReg[1];
     memwb[0].RegWrite = exmem[1].RegWrite;
 
-    printf("****************************\n");
+    printf("**********************************************\n");
     return;
 }
 
 // Write Back
 void WB(void) {
-    printf("\n<<<<<<<<<<<<<WB>>>>>>>>>>>>>\n");
+    printf("\n<<<<<<<<<<<<<<<<<<<<<WB>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(memwb[1].valid)) {
         printf("MEM/WB pipeline is invalid\n");
-        printf("****************************\n");
+        printf("**********************************************\n");
         return;
     }
+    printf("Processing PC : 0x%08x\n", debugwb[1].WBPC);
+    printf("R[%d] = 0x%x (%d)\n", memwb[1].Writereg, R[memwb[1].Writereg], R[memwb[1].Writereg]);
 
-    // select Write data
-    MemtoRegMUX = MUX_4(memwb[1].ALUresult, memwb[1].Readdata, memwb[1].PCadd8, memwb[1].upperimm, memwb[1].MemtoReg);
-
-    // update register
-    RegsWrite(memwb[1].Writereg, MemtoRegMUX);
-
-    printf("****************************\n");
+    printf("**********************************************\n");
     return;
 }
 
 
 /* Debugging */
 void IFIDDebug(void) {
-    printf("//////// IF/ID pipeline ////////\n");
-    printf("valid)       IFID[0] : %d,     IFID[1] : %d\n", ifid[0].valid, ifid[1].valid);
+    printf("//////////////// IF/ID pipeline ////////////////\n");
+    printf("valid)       IFID[0] : %d,  IFID[1] : %d\n", ifid[0].valid, ifid[1].valid);
     printf("instruction) IFID[0] : 0x%08x, IFID[1] : 0x%08x\n", ifid[0].instruction, ifid[1].instruction);
     printf("PCadd4)      IFID[0] : 0x%08x, IFID[1] : 0x%08x\n", ifid[0].PCadd4, ifid[1].PCadd4);
-    printf("////////////////////////////////\n");
+    printf("////////////////////////////////////////////////\n");
 }
 
 void IDEXDebug(void) {
-    printf("//////// ID/EX pipeline ////////\n");
+    printf("//////////////// ID/EX pipeline ////////////////\n");
     printf("valid)    IDEX[0] : %d,          IDEX[1] : %d\n", idex[0].valid, idex[1].valid);
-    printf("PCadd8)   IDEX[0] : 0x%08x,      IDEX[1] : 0x%08x\n", idex[0].PCadd8, idex[1].PCadd8);
+    printf("PCadd8)   IDEX[0] : 0x%08x, IDEX[1] : 0x%08x\n", idex[0].PCadd8, idex[1].PCadd8);
     printf("shamt)    IDEX[0] : %u,          IDEX[1] : %u\n", idex[0].shamt, idex[1].shamt);
     printf("funct)    IDEX[0] : 0x%x,        IDEX[1] : 0x%x\n", idex[0].funct, idex[1].funct);
     printf("R[rs])    IDEX[0] : 0x%08x (%u), IDEX[1] : 0x%08x (%u)\n", idex[0].Rrs, idex[0].Rrs, idex[1].Rrs, idex[1].Rrs);
@@ -268,11 +288,11 @@ void IDEXDebug(void) {
     printf("MemRead)  IDEX[0] : %d,          IDEX[1] : %d\n", idex[0].MemRead, idex[1].MemRead);
     printf("MemtoReg) IDEX[0] : %d%d,        IDEX[1] : %d%d\n", idex[0].MemtoReg[1], idex[0].MemtoReg[0], idex[1].MemtoReg[1], idex[1].MemtoReg[0]);
     printf("RegWrite) IDEX[0] : %d,          IDEX[1] : %d\n", idex[0].RegWrite, idex[1].RegWrite);
-    printf("////////////////////////////////\n");
+    printf("////////////////////////////////////////////////\n");
 }
 
 void EXMEMDebug(void) {
-    printf("//////// EX/MEM pipeline ////////\n");
+    printf("//////////////// EX/MEM pipeline ////////////////\n");
     printf("valid)     EXMEM[0] : %d,          EXMEM[1] : %d\n", exmem[0].valid, exmem[1].valid);
     printf("PCadd8)    EXMEM[0] : 0x%08x,      EXMEM[1] : 0x%08x\n", exmem[0].PCadd8, exmem[1].PCadd8);
     printf("ALUresult) EXMEM[0] : 0x%08x (%u), EXMEM[1] : 0x%08x (%u)\n", exmem[0].ALUresult, exmem[0].ALUresult, exmem[1].ALUresult, exmem[1].ALUresult);
@@ -282,11 +302,11 @@ void EXMEMDebug(void) {
     printf("MemRead)   EXMEM[0] : %d,          EXMEM[1] : %d\n", exmem[0].MemRead, exmem[1].MemRead);
     printf("MemtoReg)  EXMEM[0] : %d%d,        EXMEM[1] : %d%d\n", exmem[0].MemtoReg[1], exmem[0].MemtoReg[0], exmem[1].MemtoReg[1], exmem[1].MemtoReg[0]);
     printf("RegWrite)  EXMEM[0] : %d,          EXMEM[1] : %d\n", exmem[0].RegWrite, exmem[1].RegWrite);
-    printf("/////////////////////////////////\n");
+    printf("/////////////////////////////////////////////////\n");
 }
 
 void MEMWBDebug(void) {
-    printf("//////// MEM/WB pipeline ////////\n");
+    printf("//////////////// MEM/WB pipeline ////////////////\n");
     printf("valid)     MEMWB[0] : %d,          MEMWB[1] : %d\n", memwb[0].valid, memwb[1].valid);
     printf("PCadd8)    MEMWB[0] : 0x%08x,      MEMWB[1] : 0x%08x\n", memwb[0].PCadd8, memwb[1].PCadd8);
     printf("Readdata)  MEMWB[0] : 0x%08x (%u), MEMWB[1] : 0x%08x (%u)\n", memwb[0].Readdata, memwb[0].Readdata, memwb[1].Readdata, memwb[1].Readdata);
@@ -295,7 +315,7 @@ void MEMWBDebug(void) {
     printf("Writereg)  MEMWB[0] : %u,          MEMWB[1] : %u\n", memwb[0].Writereg, memwb[1].Writereg);
     printf("MemtoReg)  MEMWB[0] : %d%d,        MEMWB[1] : %d%d\n", memwb[0].MemtoReg[1], memwb[0].MemtoReg[0], memwb[1].MemtoReg[1], memwb[1].MemtoReg[0]);
     printf("RegWrite)  MEMWB[0] : %d,          MEMWB[1] : %d\n", memwb[0].RegWrite, memwb[1].RegWrite);
-    printf("/////////////////////////////////\n");
+    printf("/////////////////////////////////////////////////\n");
 }
 //
 // Created by SNMac on 2022/05/09.
