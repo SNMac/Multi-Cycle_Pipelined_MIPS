@@ -11,11 +11,13 @@ extern MEMWB memwb[2];
 extern uint32_t Memory[0x400000];
 extern uint32_t PC;
 extern uint32_t R[32];
-extern int Branchcount;  // taken Branch count
+extern int takenBranch;  // taken Branch count
+extern int nottakenBranch;  // not taken Branch count
 
 // from Units.c
 extern FORWARD_SIGNAL fwrdSig;
 extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
+extern BRANCH_PREDICT BranchPred;
 
 uint32_t MemtoRegMUX;
 
@@ -24,18 +26,35 @@ uint32_t MemtoRegMUX;
 // Instruction Fetch
 void IF() {
     printf("\n<<<<<<<<<<<<<IF>>>>>>>>>>>>>\n");
+    if (PC == 0xffffffff) {
+        ifid[0].valid = 0;
+        printf("PC = 0xFFFFFFFF\n");
+        printf("****************************\n");
+        return;
+    }
     printf("PC : 0x%08x\n", PC);
-
-    // save data to pipeline
-    ifid[0].instruction = InstMem(PC); ifid[0].PCadd4 = PC + 4;
+    BranchPred.instPC = PC;
+    CheckBranch();
 
     printf("Fetch instruction : 0x%08x\n", ifid[0].instruction);
     printf("****************************\n");
+
+    memset(&ifid, 0, sizeof(IFID));
+    // save data to pipeline
+    ifid[0].instruction = InstMem(PC); ifid[0].PCadd4 = PC + 4;
+    if (ctrlSig.IFIDFlush) {
+        memset(&ifid, 0, sizeof(IFID));
+    }
     return;
 }
 // Instruction Decode
 void ID() {
     printf("\n<<<<<<<<<<<<<ID>>>>>>>>>>>>>\n");
+    if (!(ifid[1].valid)) {
+        printf("IF/ID pipeline is invalid\n");
+        printf("****************************\n");
+        return;
+    }
     printf("Instruction : 0x%08x\n", ifid[1].instruction);
 
     INSTRUCTION inst;
@@ -57,8 +76,10 @@ void ID() {
 
     // Register fetch
     uint32_t* Regs_return = RegsRead(inst.rs, inst.rt);
-    // TODO
-    //  make comparator for branch
+    if (Regs_return[0] == Regs_return[1]) {  // Comparator
+        ctrlSig.Equal = 1;
+    }
+    ctrlSig.PCBranch = (ctrlSig.BNE & !ctrlSig.Equal) | (ctrlSig.BEQ & ctrlSig.Equal);
 
     // Extending immediate
     int32_t signimm = (int16_t) inst.imm;
@@ -67,17 +88,40 @@ void ID() {
     // Address calculate
     uint32_t BranchAddr = ifid[1].PCadd4 + (signimm << 2);
     uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
-    // TODO
-    //  make PCBranch
-    //  ctrlSig.PCBranch = (ctrlSig.BranchNot & !ctrlSig.Zero) | (ctrlSig.Branch & ctrlSig.Zero);
 
-    uint32_t PCBranchMUX = MUX(PC + 4, BranchAddr, ctrlSig.PCBranch);
-    uint32_t JumpMUX = MUX_3(PCBranchMUX, JumpAddr, Regs_return[0], ctrlSig.Jump);
-    PC = JumpMUX;
-    if (ctrlSig.PCBranch == 1) {
-        Branchcount++;
+    // Update jump result
+    if (ctrlSig.Jump[0] == 1) {  // j, jal
+        if(BranchPred.predict) {
+            BranchBufferWrite(JumpAddr, 1);
+        }
+    }
+    // Update branch result
+    if (ctrlSig.BEQ | ctrlSig.BNE) {  // Instruction is beq or bne
+        if (BranchPred.predict) {
+            UpdatePredictBits();
+        }
+        else {
+            BranchBufferWrite(BranchAddr, 0);
+        }
     }
 
+    if (ctrlSig.PCBranch) {
+        takenBranch++;
+    }
+    else {
+        nottakenBranch++;
+    }
+
+    // TODO
+    //  adjust PCbranchMUX
+    //  uint32_t PCBranchMUX = MUX(PC + 4, BranchAddr, ctrlSig.PCBranch);
+    uint32_t JumpMUX = MUX_3(PCBranchMUX, JumpAddr, Regs_return[0], ctrlSig.Jump);
+    PC = JumpMUX;
+
+    if (!(idex[0].valid)) {
+        return;
+    }
+    memset(&idex, 0, sizeof(IDEX));
     // save data to pipeline
     idex[0].PCadd8 = ifid[1].PCadd4 + 4; idex[0].shamt = inst.shamt;
     idex[0].Rrs = Regs_return[0]; idex[0].Rrt = Regs_return[1];
@@ -99,6 +143,11 @@ void ID() {
 // Execute
 void EX() {
     printf("\n<<<<<<<<<<<<<EX>>>>>>>>>>>>>\n");
+    if (!(idex[1].valid)) {
+        printf("ID/EX pipeline is invalid\n");
+        printf("****************************\n");
+        return;
+    }
 
     // set ALU operation
     ALUCtrlUnit(idex[1].funct);
@@ -112,6 +161,10 @@ void EX() {
     uint32_t ALUinput1 = MUX(ForwardAMUX, idex[1].shamt, idex[1].Shift);
     uint32_t ALUinput2 = MUX(ForwardBMUX, idex[1].extimm, idex[1].ALUSrc);
 
+    if (!(exmem[0].valid)) {
+        return;
+    }
+    memset(&exmem, 0, sizeof(EXMEM));
     // save data to pipeline
     exmem[0].ForwardBMUX = ForwardBMUX;
     exmem[0].ALUresult = ALU(ALUinput1, ALUinput2);
@@ -130,9 +183,16 @@ void EX() {
 // Memory Access
 void MEM() {
     printf("\n<<<<<<<<<<<<<MEM>>>>>>>>>>>>>\n");
+    if (!(exmem[1].valid)) {
+        printf("EX/MEM pipeline is invalid\n");
+        printf("****************************\n");
+        return;
+    }
 
-
-
+    if (!(memwb[0].valid)) {
+        return;
+    }
+    memset(&memwb, 0, sizeof(MEMWB));
     // save data to pipeline
     memwb[0].PCadd8 = exmem[1].PCadd8; memwb[0].ALUresult = exmem[1].ALUresult;
     memwb[0].upperimm = exmem[1].upperimm; memwb[0].Writereg = exmem[1].Writereg;
@@ -149,6 +209,11 @@ void MEM() {
 // Write Back
 void WB() {
     printf("\n<<<<<<<<<<<<<WB>>>>>>>>>>>>>\n");
+    if (!(memwb[1].valid)) {
+        printf("MEM/WB pipeline is invalid\n");
+        printf("****************************\n");
+        return;
+    }
 
     // select Write data
     MemtoRegMUX = MUX_4(memwb[1].ALUresult, memwb[1].Readdata, memwb[1].PCadd8, memwb[1].upperimm, memwb[1].MemtoReg);
@@ -160,5 +225,5 @@ void WB() {
     return;
 }
 //
-// Created by 서동환 on 2022/05/09.
+// Created by SNMac on 2022/05/09.
 //

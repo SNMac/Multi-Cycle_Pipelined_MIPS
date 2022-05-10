@@ -12,6 +12,7 @@ extern int Rcount;  // R-format instruction count
 extern int Icount;  // I-format instruction count
 extern int Jcount;  // J-format instruction count
 extern int Memcount;  // Memory access instruction count
+extern BRANCH_PREDICT BranchPred;
 
 // from Stages.c
 extern CONTROL_SIGNAL ctrlSig;
@@ -19,6 +20,7 @@ extern ALU_CONTROL_SIGNAL ALUctrlSig;
 
 FORWARD_SIGNAL fwrdSig;
 HAZARD_DETECTION_SIGNAL hzrddetectSig;
+
 
 /*============================Data units============================*/
 
@@ -74,6 +76,70 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata) {
     return Readdata;
 }
 
+// [Branch predictor]
+void CheckBranch(void) {  // Check if PC is branch
+    for (BranchPred.BTBindex = 0; BranchPred.BTBindex < BTBMAX; BranchPred.BTBindex++) {  // Send PC to BTB
+        if (BranchPred.BTB[BranchPred.BTBindex][0] == BranchPred.instPC) {  // PC found in BTB
+            BranchPred.predict = 1;
+            break;  // Send out predicted PC
+        }
+    }
+    if (BranchPred.BTBindex == BTBMAX) {  // PC not found in BTB
+        return;
+    }
+    if (BranchPred.BTB[BranchPred.BTBindex][2] == 2 || BranchPred.BTB[BranchPred.BTBindex][2] == 3)  {
+        PC = BranchPred.BTB[BranchPred.BTBindex][1];  // Predict branch taken
+    }
+    else {
+        PC = BranchPred.instPC + 4;  // Predict branch not taken
+    }
+    BranchPred.BTB[BranchPred.BTBindex][3]++;
+    return;
+}
+
+void UpdatePredictBits(void) {  // Update predict bits
+    uint8_t PB = BranchPred.BTB[BranchPred.BTBindex][2];  // Prediction Bits
+    if (ctrlSig.PCBranch) {  // branch taken
+        BranchPred.BTB[BranchPred.BTBindex][2] = PBtaken(PB);
+    }
+    else {  // branch not taken
+        BranchPred.BTB[BranchPred.BTBindex][2] = PBnottaken(PB);
+    }
+    return;
+}
+
+void BranchBufferWrite(uint32_t Address, bool brjp) {  // Write PC and BranchAddr to BTB
+    if (BranchPred.BTBsize >= BTBMAX) {  // BTB has no space
+        uint32_t min = BranchPred.BTB[0][3];
+        int minindex;
+        for (BranchPred.BTBindex = 0; BranchPred.BTBindex < BTBMAX; BranchPred.BTBindex++) {
+            if (min > BranchPred.BTB[BranchPred.BTBindex][3]) {
+                min = BranchPred.BTB[BranchPred.BTBindex][3];
+                minindex = BranchPred.BTBindex;
+            }
+        }
+        // Substitute low frequency used branch
+        BranchPred.BTB[minindex][0] = BranchPred.instPC;
+        BranchPred.BTB[minindex][1] = Address;
+        if (brjp) {
+            BranchPred.BTB[minindex][2] = 3;
+        }
+        else {
+            BranchPred.BTB[minindex][2] = 1;
+        }
+        BranchPred.BTB[minindex][3] = 0;
+        BranchPred.BTBindex = minindex;
+        return;
+    }
+    BranchPred.BTB[BranchPred.BTBsize][0] = BranchPred.instPC;
+    BranchPred.BTB[BranchPred.BTBsize][1] = Address;
+    if (brjp) {
+        BranchPred.BTB[BranchPred.BTBsize][2] = 3;
+    }
+    BranchPred.BTBsize++;
+    return;
+}
+
 // [ALU]
 uint32_t ALU(uint32_t input1, uint32_t input2) {
     uint32_t ALUresult = 0;
@@ -84,12 +150,6 @@ uint32_t ALU(uint32_t input1, uint32_t input2) {
 
         case '-' :  // subtract
             ALUresult = input1 - input2;
-            if (ALUresult == 0) {
-                ctrlSig.Zero = 1;
-            }
-            else {
-                ctrlSig.Zero = 0;
-            }
             break;
 
         case '&' :  // AND
@@ -122,9 +182,7 @@ uint32_t ALU(uint32_t input1, uint32_t input2) {
             break;
 
         case '>' :  // set less than unsigned
-            uint32_t uinput1 = input1 & 0x7fffffff;
-            uint32_t uinput2 = input2 & 0x7fffffff;
-            if (uinput1 < uinput2) {
+            if ((input1 & 0x7fffffff) < (input2 & 0x7fffffff)) {
                 ALUresult = 1;
             }
             else {
@@ -158,7 +216,7 @@ uint32_t MUX(uint32_t input1, uint32_t input2, bool signal) {
 }
 
 // [MUX with 3 input]
-uint32_t MUX_3(uint32_t input1, uint32_t input2, uint32_t input3, bool signal[]) {
+uint32_t MUX_3(uint32_t input1, uint32_t input2, uint32_t input3, const bool signal[]) {
     if (signal[1] == 0 && signal[0] == 0) {
         return input1;
     }
@@ -171,7 +229,7 @@ uint32_t MUX_3(uint32_t input1, uint32_t input2, uint32_t input3, bool signal[])
 }
 
 // [MUX with 4 input]
-uint32_t MUX_4(uint32_t input1, uint32_t input2, uint32_t input3, uint32_t input4, bool signal[]) {
+uint32_t MUX_4(uint32_t input1, uint32_t input2, uint32_t input3, uint32_t input4, const bool signal[]) {
     if (signal[1] == 0 && signal[0] == 0) {
         return input1;
     }
@@ -200,8 +258,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.RegWrite = 1;  // GPR write enabled
             ctrlSig.MemRead = 0;  // Memory read disabled
             ctrlSig.MemWrite = 0;  // Memory write enabled
-            ctrlSig.BranchNot = 0;  // opcode != bne
-            ctrlSig.Branch = 0;  // opcode != beq
+            ctrlSig.BNE = 0;  // opcode != bne
+            ctrlSig.BEQ = 0;  // opcode != beq
             ctrlSig.ALUOp = '0';  // select operation according to funct
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             if (funct == 0x08) {  // jr
@@ -219,7 +277,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x8 :  // addi
             Icount++;
-            printf("format : I   |   addi $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -227,15 +284,14 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
             ctrlSig.SignZero = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '+';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0x9 :  // addiu
             Icount++;
-            printf("format : I   |   addiu $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -243,15 +299,14 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
             ctrlSig.SignZero = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '+';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0xc :  // andi
             Icount++;
-            printf("format : I   |   andi $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -259,53 +314,49 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
             ctrlSig.SignZero = 1;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '&';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0x4 :  // beq
             Icount++;
-            printf("format : I   |   beq $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 1;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 1;
             ctrlSig.ALUOp = 'B';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0x5 :  // bne
             Icount++;
-            printf("format : I   |   bne $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
-            ctrlSig.BranchNot = 1;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 1;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = 'B';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0x2 :  // j
             Jcount++;
-            printf("format : J   |   j 0x%08x\n", inst.address);
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '+';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 1;
             break;
 
         case 0x3 :  // jal
             Jcount++;
-            printf("format : J   |   jal 0x%08x\n", inst.address);
             ctrlSig.RegWrite = 1;
             ctrlSig.RegDst[1] = 1; ctrlSig.RegDst[0] = 0;
             ctrlSig.MemtoReg[1] = 1; ctrlSig.MemtoReg[0] = 0;
@@ -315,22 +366,20 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         
         case 0xf :  // lui
             Icount++;
-            printf("format : I   |   lui $%d, 0x%x\n", inst.rt, inst.imm);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 1; ctrlSig.MemtoReg[0] = 1;
             ctrlSig.RegWrite = 1;
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '+';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0x23 :  // lw
             Icount++;
-            printf("format : I   |   lw $%d, 0x%x($%d)\n", inst.rt, inst.imm, inst.rs);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 1;
@@ -338,15 +387,14 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.MemRead = 1;
             ctrlSig.MemWrite = 0;
             ctrlSig.SignZero = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '+';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0xd :  // ori
             Icount++;
-            printf("format : I   |   ori $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -354,15 +402,14 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
             ctrlSig.SignZero = 1;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '|';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0xa :  // slti
             Icount++;
-            printf("format : I   |   slti $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -370,15 +417,14 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
             ctrlSig.SignZero = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '<';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0xb :  // sltiu
             Icount++;
-            printf("format : I   |   sltiu $%d, $%d, 0x%x\n", inst.rt, inst.rs, inst.imm);
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -386,22 +432,21 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
             ctrlSig.SignZero = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '>';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
 
         case 0x2B :  // sw
             Icount++;
-            printf("format : I   |   sw $%d, 0x%x($%d)\n", inst.rt, inst.imm, inst.rs);
-            ctrlSig.ALUSrc = 1; 
+            ctrlSig.ALUSrc = 1;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 1;
             ctrlSig.SignZero = 0;
-            ctrlSig.BranchNot = 0;
-            ctrlSig.Branch = 0;
+            ctrlSig.BNE = 0;
+            ctrlSig.BEQ = 0;
             ctrlSig.ALUOp = '+';
             ctrlSig.Jump[1] = 0; ctrlSig.Jump[0] = 0;
             break;
@@ -492,55 +537,42 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt) {
 char Rformat(uint8_t funct) {  // select ALU operation by funct (R-format)
     switch (funct) {
         case 0x20 :  // add
-            printf("format : R   |   add $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '+';
 
         case 0x21 :  // addu
-            printf("format : R   |   addu $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '+';
 
         case 0x24 :  // and
-            printf("format : R   |   and $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '&';
 
         case 0x08 :  // jr
-            printf("format : R   |   jr $%d\n", inst.rs);
             return '+';
         
         case 0x9 :  // jalr
-            printf("format : R   |   jalr $%d\n", inst.rs);
             return '+';
 
         case 0x27 :  // nor
-            printf("format : R   |   nor $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '~';
 
         case 0x25 :  // or
-            printf("format : R   |   or $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '|';
 
         case 0x2a :  // slt
-            printf("format : R   |   slt $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '<';
 
         case 0x2b :  // sltu
-            printf("format : R   |   sltu $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '>';
 
         case 0x00 :  // sll
-            printf("format : R   |   sll $%d, $%d, %d\n", inst.rd, inst.rt, inst.shamt);
             return '{';
 
         case 0x02 :  // srl
-            printf("format : R   |   srl $%d, $%d, %d\n", inst.rd, inst.rt, inst.shamt);
             return '}';
 
         case 0x22 :  // sub
-            printf("format : R   |   sub $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '-';
 
         case 0x23 :  // subu
-            printf("format : R   |   subu $%d, $%d, $%d\n", inst.rd, inst.rs, inst.rt);
             return '-';
 
         default:
@@ -549,6 +581,25 @@ char Rformat(uint8_t funct) {  // select ALU operation by funct (R-format)
     }
 }
 
+/*============================Update prediction bits============================*/
+
+uint8_t PBtaken(uint8_t Predbit) {
+    if (Predbit == 0 || Predbit == 2) {  // BHR == 00 or 10
+        return 3;  // BHR = 11
+    }
+    else if (Predbit == 1) {  // BHR == 01
+        return 0;  // BHR = 00
+    }
+}
+
+uint8_t PBnottaken(uint8_t Predbit) {
+    if (Predbit == 0 || Predbit == 2) {  // BHR == 00 or 10
+        return 1;  // BHR = 01
+    }
+    else if (Predbit == 3) {  // BHR == 11
+        return 2;  // BHR = 10
+    }
+}
 
 /*============================Exception============================*/
 
