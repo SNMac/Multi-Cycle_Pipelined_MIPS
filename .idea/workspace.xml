@@ -102,7 +102,7 @@
       <workItem from="1652113032039" duration="73000" />
       <workItem from="1652115365312" duration="7000" />
       <workItem from="1652145317270" duration="36816000" />
-      <workItem from="1652201461697" duration="8919000" />
+      <workItem from="1652201461697" duration="67993000" />
     </task>
     <task id="LOCAL-00001" summary="Pipelined MIPS (WIP)">
       <created>1652076914954</created>
@@ -153,7 +153,14 @@
       <option name="project" value="LOCAL" />
       <updated>1652190313992</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="added debug codes &amp; debugging">
+      <created>1652210475885</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1652210475885</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -189,23 +196,30 @@
     <MESSAGE value="added testbin" />
     <MESSAGE value="added simple branch predictor (not tested)&#10;added End Of Execution" />
     <MESSAGE value="add debug codes" />
-    <option name="LAST_COMMIT_MESSAGE" value="add debug codes" />
+    <MESSAGE value="added debug codes &amp; debugging" />
+    <option name="LAST_COMMIT_MESSAGE" value="added debug codes &amp; debugging" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/Stages.c</url>
-          <line>197</line>
-          <option name="timeStamp" value="4" />
+          <line>181</line>
+          <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/Stages.c</url>
-          <line>196</line>
-          <option name="timeStamp" value="5" />
+          <line>160</line>
+          <option name="timeStamp" value="35" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="CMakeRunConfiguration">
+        <watch expression="BranchPred" />
+        <watch expression="R" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
