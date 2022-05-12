@@ -15,7 +15,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Stages.c" beforeDir="false" afterPath="$PROJECT_DIR$/Stages.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Units.c" beforeDir="false" afterPath="$PROJECT_DIR$/Units.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/header.h" beforeDir="false" afterPath="$PROJECT_DIR$/header.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -102,7 +101,7 @@
       <workItem from="1652113032039" duration="73000" />
       <workItem from="1652115365312" duration="7000" />
       <workItem from="1652145317270" duration="36816000" />
-      <workItem from="1652201461697" duration="81581000" />
+      <workItem from="1652201461697" duration="84631000" />
     </task>
     <task id="LOCAL-00001" summary="Pipelined MIPS (WIP)">
       <created>1652076914954</created>
@@ -167,7 +166,14 @@
       <option name="project" value="LOCAL" />
       <updated>1652341004182</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="implementing confirmed for Simple.bin, Simple2.bin, Simple3.bin">
+      <created>1652359087403</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1652359087403</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -205,22 +211,15 @@
     <MESSAGE value="add debug codes" />
     <MESSAGE value="added debug codes &amp; debugging" />
     <MESSAGE value="added BTB, but minor bug exists" />
-    <option name="LAST_COMMIT_MESSAGE" value="added BTB, but minor bug exists" />
+    <MESSAGE value="implementing confirmed for Simple.bin, Simple2.bin, Simple3.bin" />
+    <option name="LAST_COMMIT_MESSAGE" value="implementing confirmed for Simple.bin, Simple2.bin, Simple3.bin" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/Stages.c</url>
-          <line>124</line>
-          <option name="timeStamp" value="51" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="CMakeRunConfiguration">
         <watch expression="BranchPred" />
         <watch expression="ifid" />
+        <watch expression="R" />
       </configuration>
     </watches-manager>
   </component>

@@ -263,6 +263,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
     memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     switch (opcode) {  // considered don't care as 0 or not written
         case 0x0 :  // R-format
+            printf("name : R-format\n");
             counting.Rcount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 1;  // Write register = rd
             ctrlSig.ALUSrc = 0;  // ALU input2 = rt

@@ -59,10 +59,6 @@ void IF(void) {
         debugid[0].IDPC = PC; debugid[0].IDinst = instruction;
     }
 
-    if (ctrlSig.IFFlush) {
-        ifid[0].instruction = 0;
-    }
-
     printf("**********************************************\n");
 
     return;
@@ -108,7 +104,7 @@ void ID(void) {
     if (IDForwardAMUX == IDForwardBMUX) {
         Equal = 1;
     }
-    printf("BranchForwardAMUX = %u\n BranchForwardBMUX = %u\n", IDForwardAMUX, IDForwardBMUX);
+    printf("IDForwardAMUX = %u\nIDForwardBMUX = %u\n", IDForwardAMUX, IDForwardBMUX);
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
@@ -166,7 +162,11 @@ void ID(void) {
                 counting.nottakenBranch++;
             }
         }
+        if (ctrlSig.IFFlush) {  // Flushing IF instruction
+            ifid[0].instruction = 0;
+        }
     }
+
 
     // Select PC address
     bool PCtarget = BranchPred.Predict[0] & BranchPred.AddressHit[0];
