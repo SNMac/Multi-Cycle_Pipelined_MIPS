@@ -22,7 +22,7 @@ extern DEBUGWB debugwb[2];
 // from Units.c
 extern FORWARD_SIGNAL fwrdSig;
 extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
-extern BRANCH_FORWARD_SIGNAL branchfwrdSig;
+extern ID_FORWARD_SIGNAL idfwrdSig;
 
 uint32_t MemtoRegMUX;
 
@@ -52,16 +52,19 @@ void IF(void) {
     CheckBranch(PC);
 
     // Save data to pipeline
-    ifid[0].instruction = instruction;
-    ifid[0].PC = PC; ifid[0].PCadd4 = PC + 4;
+    if (!hzrddetectSig.IFIDnotWrite){
+        ifid[0].instruction = instruction; ifid[0].PCadd4 = PC + 4;
+
+        // For visible state
+        debugid[0].IDPC = PC; debugid[0].IDinst = instruction;
+    }
+
     if (ctrlSig.IFFlush) {
         ifid[0].instruction = 0;
     }
 
     printf("**********************************************\n");
 
-    // For visible state
-    debugid[0].IDPC = PC; debugid[0].IDinst = instruction;
     return;
 }
 
@@ -95,16 +98,18 @@ void ID(void) {
     uint32_t* Regs_return = RegsRead(inst.rs, inst.rt);
 
     // Check branch forwarding
-    BranchForwardUnit(inst.rt, inst.rs, IDEXWritereg,
+    IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,
                       exmem[1].Writereg, memwb[1].Writereg);
-    uint32_t BranchForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrs, branchfwrdSig.BranchForwardA);
-    uint32_t BranchForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrt, branchfwrdSig.BranchForwardB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrs, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrt, idfwrdSig.IDForwardB);
 
     // Comparate two operands
-    if (BranchForwardAMUX == BranchForwardBMUX) {
-        ctrlSig.Equal = 1;
+    bool Equal = 0;
+    if (IDForwardAMUX == IDForwardBMUX) {
+        Equal = 1;
     }
-    ctrlSig.PCBranch = (ctrlSig.BNE & !ctrlSig.Equal) | (ctrlSig.BEQ & ctrlSig.Equal);
+    printf("BranchForwardAMUX = %u\n BranchForwardBMUX = %u\n", IDForwardAMUX, IDForwardBMUX);
+    bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
     int32_t signimm = (int16_t) inst.imm;
@@ -115,10 +120,59 @@ void ID(void) {
     uint32_t BranchAddr = ifid[1].PCadd4 + (signimm << 2);
     uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
 
+    // Update branch result to BTB
+    if ((ctrlSig.BEQ | ctrlSig.BNE)) {  // beq, bne
+        if (BranchPred.Predict[1]) {  // PC found in BTB
+            UpdatePredictBits(PCBranch);
+            if (PCBranch) {  // Branch taken
+                printf("Branch taken, ");
+                counting.takenBranch++;
+                if (BranchPred.AddressHit[1]) {  // Predict branch taken, HIT
+                    printf("predicted branch taken.\nBranch prediction HIT.\n");
+                    counting.PredictHitCount++;
+                }
+                else {  // Predict branch not taken
+                    printf("predicted branch not taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
+                    ctrlSig.IFFlush = 1;
+                    ctrlSig.IFIDPC = 0;
+                }
+            }
+
+            else {  // Branch not taken
+                printf("Branch not taken, ");
+                counting.nottakenBranch++;
+                if (BranchPred.AddressHit[1]) {  // Predict branch taken
+                    printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
+                    ctrlSig.IFFlush = 1;
+                    ctrlSig.IFIDPC = 1;
+                }
+                else {  // Predict branch not taken, HIT
+                    printf("predicted branch not taken.\nBranch prediction HIT.\n");
+                    counting.PredictHitCount++;
+                }
+            }
+        }
+        else {  // PC not found in BTB, Predicted PC + 4
+            BranchBufferWrite(BranchPred.instPC[1], BranchAddr);
+            printf("## Write PC to BTB ##\n");
+            if (PCBranch) {  // Branch taken
+                UpdatePredictBits(PCBranch);
+                printf("Instruction is branch. FLushing IF instruction.\n");
+                counting.takenBranch++;
+                ctrlSig.IFFlush = 1;
+                ctrlSig.IFIDPC = 0;
+            }
+            else {  // Branch not taken
+                counting.nottakenBranch++;
+            }
+        }
+    }
+
     // Select PC address
     bool PCtarget = BranchPred.Predict[0] & BranchPred.AddressHit[0];
-    uint32_t PCBranchMUX = MUX(PC + 4, BranchAddr, ctrlSig.PCBranch);
-    uint32_t JumpMUX = MUX_3(PCBranchMUX, JumpAddr, Regs_return[0], ctrlSig.Jump);
+    uint32_t IFIDPCMUX = MUX(PC + 4, ifid[1].PCadd4, ctrlSig.IFIDPC);
+    uint32_t PCBranchMUX = MUX(IFIDPCMUX, BranchAddr, PCBranch);
+    uint32_t JumpMUX = MUX_3(PCBranchMUX, JumpAddr, IDForwardAMUX, ctrlSig.Jump);
     uint32_t PredictMUX = MUX(JumpMUX, BranchPred.BTB[BranchPred.BTBindex[0]][1], PCtarget);
     if (PCvalid & !(hzrddetectSig.PCnotWrite)) {  // PC write disabled
         PC = PredictMUX;
@@ -139,50 +193,7 @@ void ID(void) {
     printf("imm : 0x%08x (%u), address : 0x%08x\n", inst.imm, inst.imm, inst.address);
     printf("shamt : 0x%x, funct : 0x%x\n", inst.shamt, inst.funct);
 
-    // Update branch result to BTB
-    if ((ctrlSig.BEQ | ctrlSig.BNE)) {  // beq, bne
-        if (BranchPred.Predict[1]) {  // PC found in BTB
-            UpdatePredictBits();
-            if (ctrlSig.PCBranch) {  // Branch taken
-                printf("Branch taken, ");
-                counting.takenBranch++;
-                if (BranchPred.AddressHit[1]) {  // Predict branch taken
-                    printf("Branch prediction HIT.\n");
-                    counting.PredictHitCount++;
-                }
-                else {  // Predict branch not taken
-                    printf("Branch prediction not HIT.\nFlushing IF instruction.\n");
-                    ctrlSig.IFFlush = 1;
-                }
-            }
 
-            else {  // Branch not taken
-                printf("Branch not taken, ");
-                counting.nottakenBranch++;
-                if (BranchPred.AddressHit[1]) {  // Predict branch taken
-                    printf("Branch prediction not HIT.\nFlushing IF instruction.\n");
-                    ctrlSig.IFFlush = 1;
-                }
-                else {  // Predict branch not taken
-                    printf("Branch prediction HIT.\n");
-                    counting.PredictHitCount++;
-                }
-            }
-        }
-        else {  // PC not found in BTB, Predicted PC + 4
-            BranchBufferWrite(ifid[1].PC, BranchAddr);
-            printf("## Write PC to BTB ##\n");
-            if (ctrlSig.PCBranch) {  // Branch taken
-                UpdatePredictBits();
-                printf("Instruction is branch. FLushing IF instruction.\n");
-                counting.takenBranch++;
-                ctrlSig.IFFlush = 1;
-            }
-            else {  // Branch not taken
-                counting.nottakenBranch++;
-            }
-        }
-    }
 
     // Save data to pipeline
     idex[0].PCadd8 = ifid[1].PCadd4 + 4;
@@ -202,6 +213,7 @@ void ID(void) {
         BranchPred.Predict[1] = BranchPred.Predict[0];
         BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
         BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
+        BranchPred.instPC[1] = BranchPred.instPC[0];
     }
 
     printf("**********************************************\n");

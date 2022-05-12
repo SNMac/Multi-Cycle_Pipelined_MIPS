@@ -50,8 +50,8 @@ typedef struct _DEBUGWB {
 
 /* Control signals */
 typedef struct _CONTROL_SIGNAL {  // Control signals
-	bool PCBranch, ALUSrc, RegWrite, MemRead, MemWrite, SignZero, BEQ,
-        BNE, Equal, Shift, IFFlush, Jump[2], RegDst[2], MemtoReg[2];
+	bool ALUSrc, RegWrite, MemRead, MemWrite, SignZero, BEQ,
+        BNE, Shift, IFFlush, IFIDPC, Jump[2], RegDst[2], MemtoReg[2];
     char ALUOp;
 }CONTROL_SIGNAL;
 
@@ -64,9 +64,9 @@ typedef struct _FORWARD_SIGNAL {  // Forward unit signals
     bool ForwardA[2], ForwardB[2];
 }FORWARD_SIGNAL;
 
-typedef struct _BRANCH_FORWARD_SIGNAL {  // Branch forward unit signals
-    bool BranchForwardA[2], BranchForwardB[2];
-}BRANCH_FORWARD_SIGNAL;
+typedef struct _ID_FORWARD_SIGNAL {  // Branch forward unit signals
+    bool IDForwardA[2], IDForwardB[2];
+}ID_FORWARD_SIGNAL;
 
 typedef struct _HAZARD_DETECTION_SIGNAL {  // Hazard detection unit signals
     bool PCnotWrite, IFIDnotWrite, BTBnotWrite;;
@@ -78,6 +78,7 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
     int BTBindex[2];  // [0] : now PC, [1] : previous PC
     int BTBsize;
     uint32_t BTB[BTBMAX][4];  // Branch Target Buffer
+    uint32_t instPC[2];  // [0] : now PC, [1] : previous PC
     uint8_t PHT;  // Pattern History table
     uint8_t BHR;  // Branch History Register (4 bits)
     // [i][0] = BranchinstPC, [i][1] = BranchTarget,
@@ -102,7 +103,6 @@ void MEMWBDebug(void);
 typedef struct _IFID {  // IF/ID pipeline
     bool valid;
     uint32_t instruction;
-    uint32_t PC;
     uint32_t PCadd4;
 }IFID;
 
@@ -148,7 +148,7 @@ uint32_t* RegsRead(uint8_t Readreg1, uint8_t Readreg2);  // Registers (ID)
 void RegsWrite(uint8_t Writereg, uint32_t Writedata);  // Register (WB)
 uint32_t DataMem(uint32_t Addr, uint32_t Writedata);  // Data memory
 void CheckBranch(uint32_t PCvalue);  // Check branch in IF
-void UpdatePredictBits(void);  // Update prediction bits
+void UpdatePredictBits(bool PCBranch);  // Update prediction bits
 void BranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
 uint32_t ALU(uint32_t input1, uint32_t input2);  // ALU
 uint32_t MUX(uint32_t input1, uint32_t input2, bool signal);  // signal == 0) input1, 1) input2
@@ -159,7 +159,7 @@ uint32_t MUX_4(uint32_t input1, uint32_t input2, uint32_t input3, uint32_t input
 void CtrlUnit(uint8_t opcode, uint8_t funct);  // Control unit
 void ALUCtrlUnit(uint8_t funct);  // ALU control unit
 void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg);  // Forward unit (EX, MEM hazard)
-void BranchForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg);  // Branch Forward unit (ID hazard by beq, bne)
+void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg);  // Branch Forward unit (ID hazard by beq, bne)
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg);  // Hazard detection unit
 
 /* Select ALU operation */

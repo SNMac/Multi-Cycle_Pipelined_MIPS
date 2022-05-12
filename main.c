@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
         filename = argv[1];
     }
     else {
-        filename = "Simple3.bin";
+        filename = "Simple4.bin";
     }
   
     FILE* fp = fopen(filename, "rb");
@@ -107,7 +107,13 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < BranchPred.BTBsize; i++) {
         printf("## 0x%08x ##    0x%08x    ##%16d ## %16d ##\n", BranchPred.BTB[i][0], BranchPred.BTB[i][1], BranchPred.BTB[i][2], BranchPred.BTB[i][3]);
     }
-    double BranchHitrate = (double)counting.PredictHitCount / (double)(counting.takenBranch + counting.nottakenBranch) * 100;
+    double BranchHitrate;
+    if (counting.takenBranch + counting.nottakenBranch != 0) {
+        BranchHitrate = (double)counting.PredictHitCount / (double)(counting.takenBranch + counting.nottakenBranch) * 100;
+    }
+    else {
+        BranchHitrate = 0;
+    }
     printf("###########################################################################\n");
     printf("\n\nFinal return value R[2] = %d\n", R[2]);
     printf("# of clock cycles : %d\n", cycle);
