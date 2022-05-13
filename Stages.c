@@ -55,7 +55,7 @@ void IF(void) {
     uint32_t instruction = InstMem(PC.PC);
 
     // Print information of IF
-    printf("PC : 0x%08x\n", PC);
+    printf("PC : 0x%08x\n", PC.PC);
     printf("Fetch instruction : 0x%08x\n", instruction);
 
     // Check if PC is branch instruction
@@ -116,11 +116,12 @@ void ID(void) {
         Equal = 1;
     }
     printf("IDForwardAMUX = %u\nIDForwardBMUX = %u\n", IDForwardAMUX, IDForwardBMUX);
+    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
     int32_t signimm = (int16_t) inst.imm;
-    uint32_t zeroimm = inst.imm;
+    uint32_t zeroimm = (uint16_t) inst.imm;
     uint32_t extimm = MUX(signimm, zeroimm, ctrlSig.SignZero);
 
     // Address calculate
@@ -128,61 +129,14 @@ void ID(void) {
     uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
 
     // Update branch result to BTB
-    if ((ctrlSig.BEQ | ctrlSig.BNE)) {  // beq, bne
-        if (BranchPred.Predict[1]) {  // PC found in BTB
-            UpdatePredictBits(PCBranch);
-            if (PCBranch) {  // Branch taken
-                printf("Branch taken, ");
-                counting.takenBranch++;
-                if (BranchPred.AddressHit[1]) {  // Predict branch taken, HIT
-                    printf("predicted branch taken.\nBranch prediction HIT.\n");
-                    counting.PredictHitCount++;
-                }
-                else {  // Predict branch not taken
-                    printf("predicted branch not taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
-                    ctrlSig.IFFlush = 1;
-                    ctrlSig.IFIDPC = 0;
-                }
-            }
-
-            else {  // Branch not taken
-                printf("Branch not taken, ");
-                counting.nottakenBranch++;
-                if (BranchPred.AddressHit[1]) {  // Predict branch taken
-                    printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
-                    ctrlSig.IFFlush = 1;
-                    ctrlSig.IFIDPC = 1;
-                }
-                else {  // Predict branch not taken, HIT
-                    printf("predicted branch not taken.\nBranch prediction HIT.\n");
-                    counting.PredictHitCount++;
-                }
-            }
-        }
-        else {  // PC not found in BTB, Predicted PC + 4
-            BranchBufferWrite(BranchPred.instPC[1], BranchAddr);
-            printf("## Write PC to BTB ##\n");
-            if (PCBranch) {  // Branch taken
-                UpdatePredictBits(PCBranch);
-                printf("Instruction is branch. FLushing IF instruction.\n");
-                counting.takenBranch++;
-                ctrlSig.IFFlush = 1;
-                ctrlSig.IFIDPC = 0;
-            }
-            else {  // Branch not taken
-                counting.nottakenBranch++;
-            }
-        }
-        if (ctrlSig.IFFlush) {  // Flushing IF instruction
-            ifid[0].instruction = 0;
-        }
-    }
-
+    UpdateBranchBuffer(Branch, PCBranch, BranchAddr);
 
     // Select PC address
-    bool PCtarget = BranchPred.Predict[0] & BranchPred.AddressHit[0];
-    uint32_t IFIDPCMUX = MUX(PC.PC + 4, ifid[1].PCadd4, ctrlSig.IFIDPC);
-    uint32_t PCBranchMUX = MUX(IFIDPCMUX, BranchAddr, PCBranch);
+    bool PCtarget = BranchPred.AddressHit[0] & BranchPred.Predict[0];
+    bool BranchHit = (BranchPred.Predict[1] == PCBranch) ? 1 : 0;  // !(BranchPred.Predict[1] ^ PCBranch);
+    bool IDBrPC = !BranchPred.Predict[1] & PCBranch;
+    uint32_t IFIDPCMUX = MUX(ifid[1].PCadd4, PC.PC + 4, BranchHit);
+    uint32_t PCBranchMUX = MUX(IFIDPCMUX, BranchAddr, IDBrPC);
     uint32_t JumpMUX = MUX_3(PCBranchMUX, JumpAddr, IDForwardAMUX, ctrlSig.Jump);
     uint32_t PredictMUX = MUX(JumpMUX, BranchPred.BTB[BranchPred.BTBindex[0]][1], PCtarget);
     if (PC.valid & !(hzrddetectSig.PCnotWrite)) {  // PC write disabled
@@ -203,8 +157,6 @@ void ID(void) {
     printf("rs : %u, rt : %u, rd : %u,\n", inst.rs, inst.rt, inst.rd);
     printf("imm : 0x%08x (%u), address : 0x%08x\n", inst.imm, inst.imm, inst.address);
     printf("shamt : 0x%x, funct : 0x%x\n", inst.shamt, inst.funct);
-
-
 
     // Save data to pipeline
     idex[0].PCadd8 = ifid[1].PCadd4 + 4;
@@ -331,6 +283,9 @@ void WB(void) {
 
     if (memwb[1].RegWrite) {
         printf("R[%d] = 0x%x (%d)\n", memwb[1].Writereg, R[memwb[1].Writereg], R[memwb[1].Writereg]);
+    }
+    else {
+        printf("There is no register write\n");
     }
 
     printf("**********************************************\n");

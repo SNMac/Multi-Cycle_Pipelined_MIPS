@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
         filename = argv[1];
     }
     else {
-        filename = "fib.bin";
+        filename = "gcd.bin";
     }
   
     FILE* fp = fopen(filename, "rb");
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
         WB();
         printf("\n##########################\n");
         if (PC.valid & !(hzrddetectSig.PCnotWrite)) {
-            printf("## Next PC = 0x%08x ##\n", PC);
+            printf("## Next PC = 0x%08x ##\n", PC.PC);
         }
         else {
             printf("## !!! No PC update !!! ##\n");
@@ -93,8 +93,27 @@ int main(int argc, char* argv[]) {
 //        EXMEMDebug();
 //        MEMWBDebug();
         if (!hzrddetectSig.IFIDnotWrite){
-            debugid[1] = debugid[0];
             ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
+            debugid[1] = debugid[0];
+            if (ifid[1].valid) {
+                switch (counting.format) {
+                    case 'R' :
+                        counting.Rcount++;
+                        break;
+
+                    case 'I' :
+                        counting.Icount++;
+                        break;
+
+                    case 'J' :
+                        counting.Jcount++;
+                        break;
+
+                    default :
+                        fprintf(stderr, "ERROR: Instruction has wrong format.\n");
+                        exit(EXIT_FAILURE);
+                }
+            }
         }
         idex[1] = idex[0];  // ID/EX pipeline hands data to EX
         exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM
@@ -105,6 +124,7 @@ int main(int argc, char* argv[]) {
         cycle++;
         printf("\n======================================== CC %d ========================================\n", cycle);
     }
+
     printf("===============================================================\n");
     printf("===============================================================\n");
     printf("\n<<<<<<<<<<<<<<End of execution>>>>>>>>>>>>>>\n");
@@ -112,24 +132,26 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < 32; i += 2) {
         printf("\nR[%d] : %d   |   R[%d] : %d", i, R[i], i + 1, R[i + 1]);
     }
+
     printf("\n\n########################## Branch Target Buffer ###########################\n");
     printf("## Branch PCs ## Predicted target ## Prediction bits ## Frequency of use ##\n");
     for (int i = 0; i < BranchPred.BTBsize; i++) {
         printf("## 0x%08x ##    0x%08x    ##%16d ## %16d ##\n", BranchPred.BTB[i][0], BranchPred.BTB[i][1], BranchPred.BTB[i][2], BranchPred.BTB[i][3]);
     }
-    double BranchHitrate;
+
+    double CPI, BranchHitrate;
     if (counting.takenBranch + counting.nottakenBranch != 0) {
         BranchHitrate = (double)counting.PredictHitCount / (double)(counting.takenBranch + counting.nottakenBranch) * 100;
     }
     else {
         BranchHitrate = 0;
     }
+    CPI = (double)cycle / (double)(counting.Rcount + counting.Icount + counting.Jcount);
     printf("###########################################################################\n");
     printf("\n\nFinal return value R[2] = %d\n", R[2]);
     printf("# of clock cycles : %d\n", cycle);
-    // TODO
-    //  correct instruction counts
     printf("# of executed instructions : %d\n", counting.Rcount + counting.Icount + counting.Jcount);
+    printf("Cylces Per Instruction(CPI) : %.2lf\n", CPI);
     printf("# of executed R-format instructions : %d\n", counting.Rcount);
     printf("# of executed I-format instructions : %d\n", counting.Icount);
     printf("# of executed J-format instructions : %d\n", counting.Jcount);

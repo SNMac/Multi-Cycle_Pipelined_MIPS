@@ -60,8 +60,8 @@ typedef struct _MEMWB {  // MEM/WB pipeline
 
 /* Control signals */
 typedef struct _CONTROL_SIGNAL {  // Control signals
-    bool ALUSrc, RegWrite, MemRead, MemWrite, SignZero, BEQ,
-            BNE, Shift, IFFlush, IFIDPC, Jump[2], RegDst[2], MemtoReg[2];
+    bool ALUSrc, RegWrite, MemRead, MemWrite, SignZero, BEQ, BNE,
+        Shift, IFFlush, Jump[2], RegDst[2], MemtoReg[2];
     char ALUOp;
 }CONTROL_SIGNAL;
 
@@ -101,8 +101,9 @@ uint32_t* RegsRead(uint8_t Readreg1, uint8_t Readreg2);  // Registers (ID)
 void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite);  // Register (WB)
 uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite);  // Data memory
 void CheckBranch(uint32_t PCvalue);  // Check branch in IF
-void UpdatePredictBits(bool PCBranch);  // Update prediction bits
+void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr);
 void BranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
+
 uint32_t ALU(uint32_t input1, uint32_t input2, char ALUSig);  // ALU
 uint32_t MUX(uint32_t input1, uint32_t input2, bool signal);  // signal == 0) input1, 1) input2
 uint32_t MUX_3(uint32_t input1, uint32_t input2, uint32_t input3, const bool signal[]);  // signal == 0) input1, 1) input2, 2) input3
@@ -120,8 +121,8 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
 char Rformat(uint8_t funct);  // select ALU operation by funct (R-format)
 
 /* Update prediction bits */
-uint8_t PBtaken(uint8_t Predbit);
-uint8_t PBnottaken(uint8_t Predbit);
+void PBtaken(uint8_t Predbit);
+void PBnottaken(uint8_t Predbit);
 
 /* Overflow exception */
 void OverflowException();  // Overflow exception

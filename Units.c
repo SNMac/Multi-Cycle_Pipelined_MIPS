@@ -88,40 +88,89 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite)
 void CheckBranch(uint32_t PCvalue) {  // Check if PC is branch instruction
     BranchPred.instPC[0] = PCvalue;
     if (BranchPred.BTBsize == 0) {  // BTB is empty
-        BranchPred.Predict[0] = 0;  // Branch not predicted
-        BranchPred.AddressHit[0] = 0;  // Predict branch not taken
+        BranchPred.AddressHit[0] = 0;  // Branch not predicted
+        BranchPred.Predict[0] = 0;  // Predict branch not taken
         printf("<BTB hasn't PC value.>\n");
         return;
     }
     // Find PC in BTB
     for (BranchPred.BTBindex[0] = 0; BranchPred.BTBindex[0] < BTBMAX; BranchPred.BTBindex[0]++) {
         if (BranchPred.BTB[BranchPred.BTBindex[0]][0] == PCvalue) {  // PC found in BTB
-            BranchPred.Predict[0] = 1;  // Branch predicted
+            BranchPred.AddressHit[0] = 1;  // Branch predicted
             break;  // Send out predicted PC
         }
     }
     // PC not found in BTB
     if (BranchPred.BTBindex[0] == BTBMAX) {
-        BranchPred.Predict[0] = 0;  // Branch not predicted
-        BranchPred.AddressHit[0] = 0;  // Predict branch not taken
+        BranchPred.AddressHit[0] = 0;  // Branch not predicted
+        BranchPred.Predict[0] = 0;  // Predict branch not taken
         printf("<BTB hasn't PC value.>\n");
         return;
     }
     // PC found in BTB
     if (BranchPred.BTB[BranchPred.BTBindex[0]][2] == 2 || BranchPred.BTB[BranchPred.BTBindex[0]][2] == 3)  {
-        BranchPred.AddressHit[0] = 1;  // Predict branch taken
+        BranchPred.Predict[0] = 1;  // Predict branch taken
         printf("<BTB has PC value. Predict that branch is taken.>\n");
     }
     else {
-        BranchPred.AddressHit[0] = 0;  // Predict branch not taken
+        BranchPred.Predict[0] = 0;  // Predict branch not taken
         printf("<BTB has PC value. Predict that branch is not taken.>\n");
     }
     BranchPred.BTB[BranchPred.BTBindex[0]][3]++;
     return;
 }
 
+void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
+    if (Branch) {  // beq, bne
+        if (BranchPred.AddressHit[1]) {  // PC found in BTB
+            if (PCBranch) {  // Branch taken
+                printf("Branch taken, ");
+                PBtaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
+                counting.takenBranch++;
+                if (BranchPred.Predict[1]) {  // Predict branch taken, HIT
+                    printf("predicted branch taken.\nBranch prediction HIT.\n");
+                    counting.PredictHitCount++;
+                }
+                else {  // Predict branch not taken
+                    printf("predicted branch not taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
+                    ctrlSig.IFFlush = 1;
+                }
+            }
+
+            else {  // Branch not taken
+                printf("Branch not taken, ");
+                PBnottaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
+                counting.nottakenBranch++;
+                if (BranchPred.Predict[1]) {  // Predict branch taken
+                    printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
+                    ctrlSig.IFFlush = 1;
+                }
+                else {  // Predict branch not taken, HIT
+                    printf("predicted branch not taken.\nBranch prediction HIT.\n");
+                    counting.PredictHitCount++;
+                }
+            }
+        }
+        else {  // PC not found in BTB, Predicted PC + 4
+            BranchBufferWrite(BranchPred.instPC[1], BranchAddr);
+            printf("## Write PC to BTB ##\n");
+            if (PCBranch) {  // Branch taken
+                PBtaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
+                printf("Instruction is branch. FLushing IF instruction.\n");
+                counting.takenBranch++;
+                ctrlSig.IFFlush = 1;
+            }
+            else {  // Branch not taken
+                counting.nottakenBranch++;
+            }
+        }
+        if (ctrlSig.IFFlush) {  // Flushing IF instruction
+            ifid[0].instruction = 0;
+        }
+    }
+}
+
 void BranchBufferWrite(uint32_t WritePC, uint32_t Address) {  // Write PC and BranchAddr to BTB
-    // brjp == 0) beq or bne, 1) j or jal
     if (BranchPred.BTBsize >= BTBMAX) {  // BTB has no space
         uint32_t min = BranchPred.BTB[0][3];
         int minindex;
@@ -145,13 +194,34 @@ void BranchBufferWrite(uint32_t WritePC, uint32_t Address) {  // Write PC and Br
     return;
 }
 
-void UpdatePredictBits(bool PCBranch) {  // Update predict bits
-    uint8_t PB = BranchPred.BTB[BranchPred.BTBindex[1]][2];  // Prediction Bits
-    if (PCBranch) {  // branch taken
-        BranchPred.BTB[BranchPred.BTBindex[1]][2] = PBtaken(PB);
+void PBtaken(uint8_t Predbit) {  // Update prediction bits to taken
+    if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
+        printf("<Update PB to 3>\n");
+        BranchPred.BTB[BranchPred.BTBindex[1]][2] =  3;  // PB = 11
     }
-    else {  // branch not taken
-        BranchPred.BTB[BranchPred.BTBindex[1]][2] = PBnottaken(PB);
+    else if (Predbit == 0) {  // PB == 00
+        printf("<Update PB to 1>\n");
+        BranchPred.BTB[BranchPred.BTBindex[1]][2] = 1;  // PB = 01
+    }
+    else {
+        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
+        exit(EXIT_FAILURE);
+    }
+    return;
+}
+
+void PBnottaken(uint8_t Predbit) {  // Update prediction bits to not taken
+    if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
+        printf("<Update PB to 1>\n");
+        BranchPred.BTB[BranchPred.BTBindex[1]][2] =  0;  // PB = 00
+    }
+    else if (Predbit == 3) {  // PB == 11
+        printf("<Update PB to 2>\n");
+        BranchPred.BTB[BranchPred.BTBindex[1]][2] =  2;  // PB = 10
+    }
+    else {
+        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
+        exit(EXIT_FAILURE);
     }
     return;
 }
@@ -275,8 +345,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
     memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     switch (opcode) {  // considered don't care as 0 or not written
         case 0x0 :  // R-format
+            counting.format = 'R';
             printf("name : R-format\n");
-            counting.Rcount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 1;  // Write register = rd
             ctrlSig.ALUSrc = 0;  // ALU input2 = rt
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;  // Write data = ALU result
@@ -301,8 +371,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x8 :  // addi
+            counting.format = 'I';
             printf("name : addi\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -317,8 +387,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x9 :  // addiu
+            counting.format = 'I';
             printf("name : addiu\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -333,8 +403,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xc :  // andi
+            counting.format = 'I';
             printf("name : andi\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -349,8 +419,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x4 :  // beq
+            counting.format = 'I';
             printf("name : beq\n");
-            counting.Icount++;
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
@@ -362,8 +432,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x5 :  // bne
+            counting.format = 'I';
             printf("name : bne\n");
-            counting.Icount++;
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
@@ -375,8 +445,8 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x2 :  // j
+            counting.format = 'J';
             printf("name : j\n");
-            counting.Jcount++;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
@@ -387,8 +457,9 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x3 :  // jal
+            counting.format = 'J';
             printf("name : jal\n");
-            counting.Jcount++;
+            counting.format = 'J';
             ctrlSig.RegWrite = 1;
             ctrlSig.RegDst[1] = 1; ctrlSig.RegDst[0] = 0;
             ctrlSig.MemtoReg[1] = 1; ctrlSig.MemtoReg[0] = 0;
@@ -397,6 +468,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
         
         case 0xf :  // lui
+            counting.format = 'I';
             printf("name : lui\n");
             counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
@@ -412,6 +484,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x23 :  // lw
+            counting.format = 'I';
             printf("name : lw\n");
             counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
@@ -428,6 +501,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xd :  // ori
+            counting.format = 'I';
             printf("name : ori\n");
             counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
@@ -444,6 +518,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xa :  // slti
+            counting.format = 'I';
             printf("name : slti\n");
             counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
@@ -460,6 +535,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0xb :  // sltiu
+            counting.format = 'I';
             printf("name : sltiu\n");
             counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
@@ -476,6 +552,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
             break;
 
         case 0x2B :  // sw
+            counting.format = 'I';
             printf("name : sw\n");
             counting.Icount++;
             ctrlSig.ALUSrc = 1;
@@ -528,7 +605,7 @@ void ALUCtrlUnit(uint8_t funct, char ALUOp) {
             return;
 
         default :
-            fprintf(stderr, "ERROR: Instruction has wrong funct\n");
+            fprintf(stderr, "ERROR: Instruction has wrong funct.\n");
             exit(EXIT_FAILURE);
     }
 }
@@ -628,102 +705,68 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
 /*============================Select ALU operation============================*/
 
 char Rformat(uint8_t funct) {  // select ALU operation by funct (R-format)
-    printf("name : ");
     switch (funct) {
         case 0x20 :  // add
-            printf ("add\n");
+            printf ("name : add\n");
             return '+';
 
         case 0x21 :  // addu
-            printf("addu\n");
+            printf("name : addu\n");
             return '+';
 
         case 0x24 :  // and
-            printf("and\n");
+            printf("name : and\n");
             return '&';
 
         case 0x08 :  // jr
-            printf("jr\n");
+            printf("name : jr\n");
             return '+';
         
         case 0x9 :  // jalr
-            printf("jalr\n");
+            printf("name : jalr\n");
             return '+';
 
         case 0x27 :  // nor
-            printf("nor\n");
+            printf("name : nor\n");
             return '~';
 
         case 0x25 :  // or
-            printf("or\n");
+            printf("name : or\n");
             return '|';
 
         case 0x2a :  // slt
-            printf("slt\n");
+            printf("name : slt\n");
             return '<';
 
         case 0x2b :  // sltu
-            printf("sltu\n");
+            printf("name : sltu\n");
             return '>';
 
         case 0x00 :  // sll
-            printf("sll\n");
+            printf("name : sll\n");
             return '{';
 
         case 0x02 :  // srl
-            printf("srl\n");
+            printf("name : srl\n");
             return '}';
 
         case 0x22 :  // sub
-            printf("sub\n");
+            printf("name : sub\n");
             return '-';
 
         case 0x23 :  // subu
-            printf("subu\n");
+            printf("name : subu\n");
             return '-';
 
         default:
-            fprintf(stderr, "ERROR: Instruction has wrong funct\n");
+            fprintf(stderr, "ERROR: Instruction has wrong funct.\n");
             exit(EXIT_FAILURE);
-    }
-}
-
-/*============================Update prediction bits============================*/
-
-uint8_t PBtaken(uint8_t Predbit) {
-    if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
-        printf("<Update PB to 3>\n");
-        return 3;  // PB = 11
-    }
-    else if (Predbit == 0) {  // PB == 00
-        printf("<Update PB to 1>\n");
-        return 1;  // PB = 01
-    }
-    else {
-        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
-        exit(EXIT_FAILURE);
-    }
-}
-
-uint8_t PBnottaken(uint8_t Predbit) {
-    if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
-        printf("<Update PB to 1>\n");
-        return 0;  // PB = 00
-    }
-    else if (Predbit == 3) {  // PB == 11
-        printf("<Update PB to 2>\n");
-        return 2;  // PB = 10
-    }
-    else {
-        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
-        exit(EXIT_FAILURE);
     }
 }
 
 /*============================Exception============================*/
 
-// Overflow exception
 void OverflowException() {  // check overflow in signed instruction
-    fprintf(stderr, "ERROR: Arithmetic overflow occured\n");
+    fprintf(stderr, "ERROR: Arithmetic overflow occured.\n");
     exit(EXIT_FAILURE);
 }
