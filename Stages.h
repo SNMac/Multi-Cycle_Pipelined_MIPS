@@ -5,7 +5,7 @@
 #ifndef CAMP_PROJECT3_STAGES_H
 #define CAMP_PROJECT3_STAGES_H
 
-#include "stdint.h"
+#include <stdint.h>
 
 /* Instruction */
 typedef struct _INSTRUCTION {
