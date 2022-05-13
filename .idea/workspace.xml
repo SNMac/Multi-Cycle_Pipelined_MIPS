@@ -12,9 +12,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="034f03e5-492f-4657-bdcf-c7358f314ad9" name="변경" comment="">
+      <change afterPath="$PROJECT_DIR$/Debug.c" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Debug.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Stages.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Units.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Stages.c" beforeDir="false" afterPath="$PROJECT_DIR$/Stages.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Units.c" beforeDir="false" afterPath="$PROJECT_DIR$/Units.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/header.h" beforeDir="false" afterPath="$PROJECT_DIR$/main.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -63,7 +69,17 @@
     &quot;settings.editor.selected.configurable&quot;: &quot;Errors&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
   <component name="RunManager">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="CAMP_Project3" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="CAMP_Project3" TARGET_NAME="CAMP_Project3" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="CAMP_Project3" RUN_TARGET_NAME="CAMP_Project3">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -101,7 +117,7 @@
       <workItem from="1652113032039" duration="73000" />
       <workItem from="1652115365312" duration="7000" />
       <workItem from="1652145317270" duration="36816000" />
-      <workItem from="1652201461697" duration="84631000" />
+      <workItem from="1652201461697" duration="93832000" />
     </task>
     <task id="LOCAL-00001" summary="Pipelined MIPS (WIP)">
       <created>1652076914954</created>
@@ -173,7 +189,14 @@
       <option name="project" value="LOCAL" />
       <updated>1652359087403</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="implementing confirmed for fib.bin, fib_jalr.bin">
+      <created>1652362114946</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1652362114946</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -212,7 +235,8 @@
     <MESSAGE value="added debug codes &amp; debugging" />
     <MESSAGE value="added BTB, but minor bug exists" />
     <MESSAGE value="implementing confirmed for Simple.bin, Simple2.bin, Simple3.bin" />
-    <option name="LAST_COMMIT_MESSAGE" value="implementing confirmed for Simple.bin, Simple2.bin, Simple3.bin" />
+    <MESSAGE value="implementing confirmed for fib.bin, fib_jalr.bin" />
+    <option name="LAST_COMMIT_MESSAGE" value="implementing confirmed for fib.bin, fib_jalr.bin" />
   </component>
   <component name="XDebuggerManager">
     <watches-manager>

@@ -1,20 +1,29 @@
-#include "header.h"
+//
+// Created by SNMac on 2022/05/09.
+//
+
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
-IFID ifid[2];
-IDEX idex[2];
-EXMEM exmem[2];
-MEMWB memwb[2];
-HAZARD_DETECTION_SIGNAL hzrddetectSig;
-BRANCH_PREDICT BranchPred;
+#include "main.h"
+#include "Units.h"
+#include "Stages.h"
+#include "Debug.h"
 
+COUNTING counting;  // for result counting
 
 uint32_t Memory[0x400000];
-uint32_t PC; bool PCvalid;
 uint32_t R[32];
 
-// for result counting
-COUNTING counting;
+// from Units.c
+extern PROGRAM_COUNTER PC;
+extern IFID ifid[2];
+extern IDEX idex[2];
+extern EXMEM exmem[2];
+extern MEMWB memwb[2];
+extern BRANCH_PREDICT BranchPred;
+extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
 
 // for checking
 DEBUGID debugid[2];
@@ -29,7 +38,7 @@ int main(int argc, char* argv[]) {
         filename = argv[1];
     }
     else {
-        filename = "gcd.bin";
+        filename = "fib.bin";
     }
   
     FILE* fp = fopen(filename, "rb");
@@ -48,8 +57,6 @@ int main(int argc, char* argv[]) {
         Memory[index] = __builtin_bswap32(buffer);  // Little endian to Big endian
         index++;
     }
-  
-    int cycle = 0;  // to count clock cycle
     for (int i = 0; i < index; i++) {
         printf("Memory [%d] : 0x%08x\n", i, Memory[i]);
     }
@@ -57,8 +64,11 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < BTBMAX; i++) {
         BranchPred.BTB[i][2] = 1;  // Initialize predict bits to 1
     }
+
+    int cycle = 0;  // to count clock cycle
     ifid[0].valid = 1;
-    PCvalid = 1;
+    PC.PC = 0;
+    PC.valid = 1;
     R[31] = 0xFFFFFFFF;  // $ra = 0xFFFFFFFF
     R[29] = 0x1000000;  // $sp = 0x1000000
     while(index != 0) {
@@ -71,7 +81,7 @@ int main(int argc, char* argv[]) {
         MEM();
         WB();
         printf("\n##########################\n");
-        if (PCvalid & !(hzrddetectSig.PCnotWrite)) {
+        if (PC.valid & !(hzrddetectSig.PCnotWrite)) {
             printf("## Next PC = 0x%08x ##\n", PC);
         }
         else {
@@ -117,6 +127,8 @@ int main(int argc, char* argv[]) {
     printf("###########################################################################\n");
     printf("\n\nFinal return value R[2] = %d\n", R[2]);
     printf("# of clock cycles : %d\n", cycle);
+    // TODO
+    //  correct instruction counts
     printf("# of executed instructions : %d\n", counting.Rcount + counting.Icount + counting.Jcount);
     printf("# of executed R-format instructions : %d\n", counting.Rcount);
     printf("# of executed I-format instructions : %d\n", counting.Icount);

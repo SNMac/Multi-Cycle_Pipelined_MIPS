@@ -1,25 +1,32 @@
-#include "header.h"
+//
+// Created by SNMac on 2022/05/09.
+//
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+
+#include "Units.h"
+#include "main.h"
+
+PROGRAM_COUNTER PC;
+IFID ifid[2];
+IDEX idex[2];
+EXMEM exmem[2];
+MEMWB memwb[2];
+CONTROL_SIGNAL ctrlSig;
+ALU_CONTROL_SIGNAL ALUctrlSig;
+BRANCH_PREDICT BranchPred;
+FORWARD_SIGNAL fwrdSig;
+HAZARD_DETECTION_SIGNAL hzrddetectSig;
+ID_FORWARD_SIGNAL idfwrdSig;
 
 // from main.c
-extern IFID ifid[2];
-extern IDEX idex[2];
-extern EXMEM exmem[2];
-extern MEMWB memwb[2];
 extern uint32_t Memory[0x400000];
-extern uint32_t PC;
 extern uint32_t R[32];
 extern COUNTING counting;
-extern BRANCH_PREDICT BranchPred;
-
-// from Stages.c
-extern CONTROL_SIGNAL ctrlSig;
-extern ALU_CONTROL_SIGNAL ALUctrlSig;
-
-FORWARD_SIGNAL fwrdSig;
-ID_FORWARD_SIGNAL idfwrdSig;
-extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
-
-
 
 /*============================Data units============================*/
 
@@ -36,8 +43,8 @@ uint32_t* RegsRead(uint8_t Readreg1, uint8_t Readreg2) {
     Readdata[1] = R[Readreg2];
     return Readdata;
 }
-void RegsWrite(uint8_t Writereg, uint32_t Writedata) {
-    if (memwb[1].RegWrite) {  // RegWrite asserted
+void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite) {
+    if (RegWrite) {  // RegWrite asserted
         if (Writereg == 0 && Writedata != 0) {
             fprintf(stderr, "WARNING: Cannot change value at $0\n");
             return;
@@ -51,9 +58,9 @@ void RegsWrite(uint8_t Writereg, uint32_t Writedata) {
 }
 
 // [Data memory]
-uint32_t DataMem(uint32_t Addr, uint32_t Writedata) {
+uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite) {
     uint32_t Readdata = 0;
-    if (exmem[1].MemRead == 1 && exmem[1].MemWrite == 0) {  // MemRead asserted, MemWrite De-asserted
+    if (MemRead == 1 && MemWrite == 0) {  // MemRead asserted, MemWrite De-asserted
         if (Addr > 0x1000000) {  // loading outside of memory
             fprintf(stderr, "ERROR: Accessing outside of memory\n");
             exit(EXIT_FAILURE);
@@ -62,7 +69,7 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata) {
         printf("Memory[0x%08x] load -> 0x%x (%d)\n", Addr, Memory[Addr / 4], Memory[Addr / 4]);
         counting.Memcount++;
     }
-    else if (exmem[1].MemRead == 0 && exmem[1].MemWrite == 1) {  // MemRead De-asserted, MemWrite asserted
+    else if (MemRead == 0 && MemWrite == 1) {  // MemRead De-asserted, MemWrite asserted
         if (Addr > 0x1000000) {  // Writing outside of memory
             fprintf(stderr, "ERROR: Accessing outside of memory\n");
             exit(EXIT_FAILURE);
@@ -150,9 +157,9 @@ void UpdatePredictBits(bool PCBranch) {  // Update predict bits
 }
 
 // [ALU]
-uint32_t ALU(uint32_t input1, uint32_t input2) {
+uint32_t ALU(uint32_t input1, uint32_t input2, char ALUSig) {
     uint32_t ALUresult = 0;
-    switch (ALUctrlSig.ALUSig) {
+    switch (ALUSig) {
         case '+' :  // add
             ALUresult = input1 + input2;
             break;
@@ -209,6 +216,11 @@ uint32_t ALU(uint32_t input1, uint32_t input2) {
 
         case '\0' :  // nop
             break;
+
+        default :
+            fprintf(stderr, "ERROR: Instruction has wrong opcode or funct.\n");
+            exit(EXIT_FAILURE);
+
     }
     if ( ((input1 & 0x80000000) == (input2 & 0x80000000)) && ((ALUresult & 0x80000000) != (input1 & 0x80000000)) ) {
         // same sign input = different sign output
@@ -485,9 +497,9 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 }
 
 // (ALU control unit)
-void ALUCtrlUnit(uint8_t funct) {
+void ALUCtrlUnit(uint8_t funct, char ALUOp) {
     memset(&ALUctrlSig, 0, sizeof(ALU_CONTROL_SIGNAL));
-    switch (idex[1].ALUOp) {  // 0, +, &, B, |, <
+    switch (ALUOp) {  // 0, +, &, B, |, <
         case '0' :  // select operation according to funct
             ALUctrlSig.ALUSig = Rformat(funct);
             return;
@@ -594,15 +606,16 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
 }
 
 // (Hazard detection unit)
-void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg) {
+void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg,
+                    bool MemRead, bool RegWrite, bool BEQ, bool BNE, bool Jump) {
     memset(&hzrddetectSig, 0, sizeof(HAZARD_DETECTION_SIGNAL));
-    if (idex[1].MemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
+    if (MemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
         printf("<<Load-use hazard detected. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     }
-    if (idex[1].RegWrite && (ctrlSig.BEQ | ctrlSig.BNE | ctrlSig.Jump[1]) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
+    if (RegWrite && (BEQ | BNE | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
         printf("<<Register Read data hazard detected. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
@@ -686,6 +699,10 @@ uint8_t PBtaken(uint8_t Predbit) {
         printf("<Update PB to 1>\n");
         return 1;  // PB = 01
     }
+    else {
+        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 uint8_t PBnottaken(uint8_t Predbit) {
@@ -696,6 +713,10 @@ uint8_t PBnottaken(uint8_t Predbit) {
     else if (Predbit == 3) {  // PB == 11
         printf("<Update PB to 2>\n");
         return 2;  // PB = 10
+    }
+    else {
+        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
+        exit(EXIT_FAILURE);
     }
 }
 
