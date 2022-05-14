@@ -112,10 +112,11 @@ uint32_t MUX_4(uint32_t input1, uint32_t input2, uint32_t input3, uint32_t input
 /* Control units */
 void CtrlUnit(uint8_t opcode, uint8_t funct);  // Control unit
 void ALUCtrlUnit(uint8_t funct, char ALUOp);  // ALU control unit
-void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg);  // Forward unit (EX, MEM hazard)
-void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg);  // Branch Forward unit (ID hazard by beq, bne)
-void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg,
-                    bool MemRead, bool RegWrite, bool BEQ, bool BNE, bool Jump);  // Hazard detection unit
+void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg, bool EXMEMRegWrite, bool MEMWBRegWrite);  // Forward unit (EX, MEM hazard)
+void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
+                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite);  // Branch Forward unit (ID hazard by beq, bne)
+void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
+                    bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump);  // Hazard detection unit
 
 /* Select ALU operation */
 char Rformat(uint8_t funct);  // select ALU operation by funct (R-format)

@@ -94,8 +94,8 @@ void ID(void) {
     uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
 
     // Load-use, branch hazard detect
-    HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg,
-                     idex[1].MemRead, idex[1].RegWrite, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+    HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
+                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
 
     // Avoid ID-WB hazard
     MemtoRegMUX = MUX_4(memwb[1].ALUresult, memwb[1].Readdata, memwb[1].PCadd8, memwb[1].upperimm, memwb[1].MemtoReg);
@@ -105,16 +105,13 @@ void ID(void) {
     uint32_t* Regs_return = RegsRead(inst.rs, inst.rt);
 
     // Check branch forwarding
-    IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,
-                      exmem[1].Writereg, memwb[1].Writereg);
+    IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite);
     uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrs, idfwrdSig.IDForwardA);
     uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrt, idfwrdSig.IDForwardB);
 
     // Comparate two operands
-    bool Equal = 0;
-    if (IDForwardAMUX == IDForwardBMUX) {
-        Equal = 1;
-    }
+    bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
     printf("IDForwardAMUX = %u\nIDForwardBMUX = %u\n", IDForwardAMUX, IDForwardBMUX);
     bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
@@ -133,7 +130,7 @@ void ID(void) {
 
     // Select PC address
     bool PCtarget = BranchPred.AddressHit[0] & BranchPred.Predict[0];
-    bool BranchHit = (BranchPred.Predict[1] == PCBranch) ? 1 : 0;  // !(BranchPred.Predict[1] ^ PCBranch);
+    bool BranchHit = !(BranchPred.Predict[1] ^ PCBranch);
     bool IDBrPC = !BranchPred.Predict[1] & PCBranch;
     uint32_t IFIDPCMUX = MUX(ifid[1].PCadd4, PC.PC + 4, BranchHit);
     uint32_t PCBranchMUX = MUX(IFIDPCMUX, BranchAddr, IDBrPC);
@@ -203,7 +200,7 @@ void EX(void) {
     ALUCtrlUnit(idex[1].funct, idex[1].ALUOp);
 
     // Forwarding
-    ForwardUnit(idex[1].rt, idex[1].rs, exmem[1].Writereg, memwb[1].Writereg);
+    ForwardUnit(idex[1].rt, idex[1].rs, exmem[1].Writereg, memwb[1].Writereg, exmem[1].RegWrite, memwb[1].RegWrite);
     uint32_t ForwardAMUX = MUX_3(idex[1].Rrs, MemtoRegMUX, exmem[1].ALUresult, fwrdSig.ForwardA);
     uint32_t ForwardBMUX = MUX_3(idex[1].Rrt, MemtoRegMUX, exmem[1].ALUresult, fwrdSig.ForwardB);
 

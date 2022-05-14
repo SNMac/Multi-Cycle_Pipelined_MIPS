@@ -212,7 +212,7 @@ void PBtaken(uint8_t Predbit) {  // Update prediction bits to taken
 
 void PBnottaken(uint8_t Predbit) {  // Update prediction bits to not taken
     if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
-        printf("<Update PB to 1>\n");
+        printf("<Update PB to 0>\n");
         BranchPred.BTB[BranchPred.BTBindex[1]][2] =  0;  // PB = 00
     }
     else if (Predbit == 3) {  // PB == 11
@@ -611,27 +611,27 @@ void ALUCtrlUnit(uint8_t funct, char ALUOp) {
 }
 
 // (Fowarding Unit)
-void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg) {
+void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg, bool EXMEMRegWrite, bool MEMWBRegWrite) {
     memset(&fwrdSig, 0, sizeof(FORWARD_SIGNAL));
     // EX hazard
-    if (exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrs)) {
+    if (EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrs)) {
         fwrdSig.ForwardA[1] = 1; fwrdSig.ForwardA[0] = 0;  // ForwardA = 10
         printf("<ALU input1 forwarded from EX/MEM pipeline>\n");
     }
-    if (exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt)) {
+    if (EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt)) {
         fwrdSig.ForwardB[1] = 1; fwrdSig.ForwardB[0] = 0;  // ForwardB = 10
         printf("<ALU input2 forwarded from EX/MEM pipeline>\n");
     }
 
     // MEM hazard
-    if (memwb[1].RegWrite && (MEMWBWritereg != 0) &&
-        !( exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrs) ) &&
+    if (MEMWBRegWrite && (MEMWBWritereg != 0) &&
+        !( EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrs) ) &&
         (MEMWBWritereg == IDEXrs)) {
         fwrdSig.ForwardA[1] = 0; fwrdSig.ForwardA[0] = 1;  // ForwardA = 01
         printf("<ALU input1 forwarded from MEM/WB pipeline>\n");
     }
-    if (memwb[1].RegWrite && (MEMWBWritereg != 0) &&
-        !( exmem[1].RegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt) ) &&
+    if (MEMWBRegWrite && (MEMWBWritereg != 0) &&
+        !( EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt) ) &&
         (MEMWBWritereg == IDEXrt)) {
         fwrdSig.ForwardB[1] = 0; fwrdSig.ForwardB[0] = 1;  // ForwardB = 01
         printf("<ALU input2 forwarded from MEM/WB pipeline>\n");
@@ -639,43 +639,44 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
     return;
 }
 
-void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg) {
+void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
+                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite) {
     memset(&idfwrdSig, 0, sizeof(ID_FORWARD_SIGNAL));
     // ID hazard
-    if (idex[1].RegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs)) {
+    if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs)) {
         idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[1] = 1;  // IDForwardA = 11
         printf("<Register Read data1 forwarded from ID/EX pipeline>\n");
     }
-    if (idex[1].RegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt)) {
+    if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[1] = 1;  // IDForwardB = 11
         printf("<Register Read data2 forwarded from ID/EX pipeline>\n");
     }
 
     // EX hazard
-    if (exmem[1].RegWrite && (EXMEMWritereg != 0) &&
-        !( idex[1].RegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) ) &&
+    if (EXMEMRegWrite && (EXMEMWritereg != 0) &&
+        !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) ) &&
         (EXMEMWritereg == IFIDrs)) {
         idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[0] = 0;  // IDForwardA = 10
         printf("<Register Read data1 forwarded from EX/MEM pipeline>\n");
     }
-    if (exmem[1].RegWrite && (EXMEMWritereg != 0) &&
-        !( idex[1].RegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) ) &&
+    if (EXMEMRegWrite && (EXMEMWritereg != 0) &&
+        !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) ) &&
         (EXMEMWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[0] = 0;  // IDForwardB = 10
         printf("<Register Read data2 forwarded from EX/MEM pipeline>\n");
     }
 
     // MEM hazard
-    if (memwb[1].RegWrite && (MEMWBWritereg != 0) &&
-        !( exmem[1].RegWrite && (EXMEMWritereg != 0) &&
-        !( idex[1].RegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) ) && (EXMEMWritereg == IFIDrs) )
+    if (MEMWBRegWrite && (MEMWBWritereg != 0) &&
+        !( EXMEMRegWrite && (EXMEMWritereg != 0) &&
+        !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) ) && (EXMEMWritereg == IFIDrs) )
         && (MEMWBWritereg == IFIDrs)) {
         idfwrdSig.IDForwardA[1] = 0; idfwrdSig.IDForwardA[0] = 1;  // IDForwardA = 01
         printf("<Register Read data1 forwarded from MEM/WB pipeline>\n");
     }
-    if (memwb[1].RegWrite && (MEMWBWritereg != 0) &&
-        !( exmem[1].RegWrite && (EXMEMWritereg != 0) &&
-           !( idex[1].RegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) ) && (EXMEMWritereg == IFIDrt) )
+    if (MEMWBRegWrite && (MEMWBWritereg != 0) &&
+        !( EXMEMRegWrite && (EXMEMWritereg != 0) &&
+           !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) ) && (EXMEMWritereg == IFIDrt) )
         && (MEMWBWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 0; idfwrdSig.IDForwardB[0] = 1;  // IDForwardB = 01
         printf("<Register Read data2 forwarded from MEM/WB pipeline>\n");
@@ -683,17 +684,24 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
 }
 
 // (Hazard detection unit)
-void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg,
-                    bool MemRead, bool RegWrite, bool BEQ, bool BNE, bool Jump) {
+void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
+                    bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump) {
     memset(&hzrddetectSig, 0, sizeof(HAZARD_DETECTION_SIGNAL));
-    if (MemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
+    if (IDEXMemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
         printf("<<Load-use hazard detected. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     }
-    if (RegWrite && (BEQ | BNE | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
-        printf("<<Register Read data hazard detected. Adding nop.>>\n");
+    if (IDEXRegWrite && (BEQ | BNE | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
+        printf("<<Register Read data hazard detected from IDEX. Adding nop.>>\n");
+        hzrddetectSig.PCnotWrite = 1;
+        hzrddetectSig.IFIDnotWrite = 1;
+        hzrddetectSig.BTBnotWrite = 1;
+        memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+    }
+    if (EXMEMMemRead && (BEQ | BNE | Jump) && ((EXMEMWritereg == IFIDrs) || (EXMEMWritereg == IFIDrt))) {
+        printf("<<Register Read data hazard detected from EXMEM. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.BTBnotWrite = 1;
