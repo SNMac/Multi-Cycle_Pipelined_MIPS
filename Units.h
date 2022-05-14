@@ -72,7 +72,7 @@ typedef struct _ALU_CONTROL_SIGNAL {  // ALU control signals
 }ALU_CONTROL_SIGNAL;
 
 typedef struct _FORWARD_SIGNAL {  // Forward unit signals
-    bool ForwardA[2], ForwardB[2];
+    bool ForwardA[2], ForwardB[2], EXMEMupperimmA, EXMEMupperimmB;
 }FORWARD_SIGNAL;
 
 typedef struct _ID_FORWARD_SIGNAL {  // Branch forward unit signals
@@ -117,7 +117,8 @@ uint32_t MUX_4(uint32_t input1, uint32_t input2, uint32_t input3, uint32_t input
 /* Control units */
 void CtrlUnit(uint8_t opcode, uint8_t funct);  // Control unit
 void ALUCtrlUnit(uint8_t funct, char ALUOp);  // ALU control unit
-void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg, bool EXMEMRegWrite, bool MEMWBRegWrite);  // Forward unit (EX, MEM hazard)
+void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
+                 bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]);  // Forward unit (EX, MEM hazard)
 void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
                    bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite);  // Branch Forward unit (ID hazard by beq, bne)
 void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBRegWrite);

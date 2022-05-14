@@ -64,8 +64,6 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < BTBMAX; i++) {
         BranchPred.BTB[i][2] = 1;  // Initialize predict bits to 1
     }
-
-    int cycle = 0;  // to count clock cycle
     ifid[0].valid = 1;
     PC.PC = 0;
     PC.valid = 1;
@@ -81,7 +79,7 @@ int main(int argc, char* argv[]) {
         MEM();
         WB();
         printf("\n##########################\n");
-        if (PC.valid & !(hzrddetectSig.PCnotWrite)) {
+        if (PC.valid & !hzrddetectSig.PCnotWrite) {
             printf("## Next PC = 0x%08x ##\n", PC.PC);
         }
         else {
@@ -121,8 +119,8 @@ int main(int argc, char* argv[]) {
         debugex[1] = debugex[0];
         debugmem[1] = debugmem[0];
         debugwb[1] = debugwb[0];
-        cycle++;
-        printf("\n======================================== CC %d ========================================\n", cycle);
+        counting.cycle++;
+        printf("\n======================================== CC %d ========================================\n", counting.cycle);
     }
 
     printf("===============================================================\n");
@@ -146,10 +144,10 @@ int main(int argc, char* argv[]) {
     else {
         BranchHitrate = 0;
     }
-    CPI = (double)cycle / (double)(counting.Rcount + counting.Icount + counting.Jcount);
+    CPI = (double)counting.cycle / (double)(counting.Rcount + counting.Icount + counting.Jcount);
     printf("###########################################################################\n");
     printf("\n\nFinal return value R[2] = %d\n", R[2]);
-    printf("# of clock cycles : %d\n", cycle);
+    printf("# of clock cycles : %d\n", counting.cycle);
     printf("# of executed instructions : %d\n", counting.Rcount + counting.Icount + counting.Jcount);
     printf("Cylces Per Instruction(CPI) : %.2lf\n", CPI);
     printf("# of executed R-format instructions : %d\n", counting.Rcount);

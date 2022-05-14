@@ -6,6 +6,7 @@
 #define CAMP_PROJECT3_MAIN_H
 
 typedef struct _COUNTING {
+    int cycle;
     char format;
     int Rcount;  // R-format instruction count
     int Icount;  // I-format instruction count

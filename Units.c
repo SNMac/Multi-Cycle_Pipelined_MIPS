@@ -461,7 +461,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         case 0x3 :  // jal
             counting.format = 'J';
             printf("name : jal\n");
-            counting.format = 'J';
             ctrlSig.RegWrite = 1;
             ctrlSig.RegDst[1] = 1; ctrlSig.RegDst[0] = 0;
             ctrlSig.MemtoReg[1] = 1; ctrlSig.MemtoReg[0] = 0;
@@ -613,15 +612,22 @@ void ALUCtrlUnit(uint8_t funct, char ALUOp) {
 }
 
 // (Fowarding Unit)
-void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg, bool EXMEMRegWrite, bool MEMWBRegWrite) {
+void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
+                 bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]) {
     memset(&fwrdSig, 0, sizeof(FORWARD_SIGNAL));
     // EX hazard
     if (EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrs)) {
         fwrdSig.ForwardA[1] = 1; fwrdSig.ForwardA[0] = 0;  // ForwardA = 10
+        if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
+            fwrdSig.EXMEMupperimmA = 1;
+        }
         printf("<ALU input1 forwarded from EX/MEM pipeline>\n");
     }
     if (EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt)) {
         fwrdSig.ForwardB[1] = 1; fwrdSig.ForwardB[0] = 0;  // ForwardB = 10
+        if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
+            fwrdSig.EXMEMupperimmB = 1;
+        }
         printf("<ALU input2 forwarded from EX/MEM pipeline>\n");
     }
 

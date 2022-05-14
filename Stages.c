@@ -202,9 +202,12 @@ void EX(void) {
     ALUCtrlUnit(idex[1].funct, idex[1].ALUOp);
 
     // Forwarding
-    ForwardUnit(idex[1].rt, idex[1].rs, exmem[1].Writereg, memwb[1].Writereg, exmem[1].RegWrite, memwb[1].RegWrite);
-    uint32_t ForwardAMUX = MUX_3(idex[1].Rrs, MemtoRegMUX, exmem[1].ALUresult, fwrdSig.ForwardA);
-    uint32_t ForwardBMUX = MUX_3(idex[1].Rrt, MemtoRegMUX, exmem[1].ALUresult, fwrdSig.ForwardB);
+    ForwardUnit(idex[1].rt, idex[1].rs, exmem[1].Writereg, memwb[1].Writereg,
+                exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+    uint32_t ForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
+    uint32_t ForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
+    uint32_t ForwardAMUX = MUX_3(idex[1].Rrs, MemtoRegMUX, ForwardAupperimmMUX, fwrdSig.ForwardA);
+    uint32_t ForwardBMUX = MUX_3(idex[1].Rrt, MemtoRegMUX, ForwardBupperimmMUX, fwrdSig.ForwardB);
 
     // Execute operation
     uint32_t ALUinput1 = MUX(ForwardAMUX, idex[1].shamt, idex[1].Shift);
