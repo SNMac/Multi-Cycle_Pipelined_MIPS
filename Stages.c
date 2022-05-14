@@ -28,8 +28,10 @@ extern CONTROL_SIGNAL ctrlSig;
 extern ALU_CONTROL_SIGNAL ALUctrlSig;
 extern BRANCH_PREDICT BranchPred;
 extern FORWARD_SIGNAL fwrdSig;
-extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
 extern ID_FORWARD_SIGNAL idfwrdSig;
+extern MEM_FORWARD_SIGNAL memfwrdSig;
+extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
+
 
 // from Debug.h
 extern DEBUGID debugid[2];
@@ -219,7 +221,7 @@ void EX(void) {
     // Save data to pipeline
     exmem[0].PCadd8 = idex[1].PCadd8; exmem[0].upperimm = idex[1].upperimm;
     exmem[0].ForwardBMUX = ForwardBMUX; exmem[0].ALUresult = ALUresult;
-    exmem[0].Writereg = Writereg;
+    exmem[0].Writereg = Writereg; exmem[0].rt = idex[1].rt;
 
     // Save control signals to pipeline
     exmem[0].MemWrite = idex[1].MemWrite; exmem[0].MemRead = idex[1].MemRead;
@@ -246,8 +248,10 @@ void MEM(void) {
     printf("Processing PC : 0x%08x\n", debugmem[1].MEMPC);
     printf("Processing instruction : 0x%08x\n", debugmem[1].MEMinst);
 
+    MEMForwardUnit(exmem[1].rt, memwb[1].Writereg, exmem[1].MemWrite, memwb[1].RegWrite);
+    uint32_t MemWriteDataMUX = MUX(exmem[1].ForwardBMUX, MemtoRegMUX, memfwrdSig.MEMForward);
     // Memory access
-    uint32_t Readdata = DataMem(exmem[1].ALUresult, exmem[1].ForwardBMUX,
+    uint32_t Readdata = DataMem(exmem[1].ALUresult, MemWriteDataMUX,
                                 exmem[1].MemRead, exmem[1].MemWrite);
 
     // Save data to pipeline

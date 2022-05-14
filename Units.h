@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#define BTBMAX 32
+#define BTBMAX 8
 
 /* Program Counter */
 typedef struct _PROGRAM_COUNTER {
@@ -45,6 +45,7 @@ typedef struct _EXMEM {  // EX/MEM pipeline
     uint32_t ForwardBMUX;
     uint32_t upperimm;
     uint8_t Writereg;
+    uint8_t rt;
     bool MemWrite, MemRead, MemtoReg[2], RegWrite;
 }EXMEM;
 
@@ -77,6 +78,10 @@ typedef struct _FORWARD_SIGNAL {  // Forward unit signals
 typedef struct _ID_FORWARD_SIGNAL {  // Branch forward unit signals
     bool IDForwardA[2], IDForwardB[2];
 }ID_FORWARD_SIGNAL;
+
+typedef struct _MEM_FORWARD_SIGNAL {
+    bool MEMForward;
+}MEM_FORWARD_SIGNAL;
 
 typedef struct _HAZARD_DETECTION_SIGNAL {  // Hazard detection unit signals
     bool PCnotWrite, IFIDnotWrite, BTBnotWrite;;
@@ -115,6 +120,7 @@ void ALUCtrlUnit(uint8_t funct, char ALUOp);  // ALU control unit
 void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg, bool EXMEMRegWrite, bool MEMWBRegWrite);  // Forward unit (EX, MEM hazard)
 void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
                    bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite);  // Branch Forward unit (ID hazard by beq, bne)
+void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBRegWrite);
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
                     bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump);  // Hazard detection unit
 

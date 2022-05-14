@@ -20,8 +20,10 @@ CONTROL_SIGNAL ctrlSig;
 ALU_CONTROL_SIGNAL ALUctrlSig;
 BRANCH_PREDICT BranchPred;
 FORWARD_SIGNAL fwrdSig;
-HAZARD_DETECTION_SIGNAL hzrddetectSig;
 ID_FORWARD_SIGNAL idfwrdSig;
+MEM_FORWARD_SIGNAL memfwrdSig;
+HAZARD_DETECTION_SIGNAL hzrddetectSig;
+
 
 // from main.c
 extern uint32_t Memory[0x400000];
@@ -680,6 +682,14 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
         && (MEMWBWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 0; idfwrdSig.IDForwardB[0] = 1;  // IDForwardB = 01
         printf("<Register Read data2 forwarded from MEM/WB pipeline>\n");
+    }
+}
+
+void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBRegWrite) {
+    memset(&memfwrdSig, 0, sizeof(MEM_FORWARD_SIGNAL));
+    if (MEMWBRegWrite && EXMEMMemWrite && (MEMWBWritereg != 0) && (MEMWBWritereg == EXMEMrt)) {
+        memfwrdSig.MEMForward = 1;
+        printf("<Memory Write Data forwarded from MEM/WB pipeline>\n");
     }
 }
 
