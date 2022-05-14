@@ -86,13 +86,8 @@ int main(int argc, char* argv[]) {
             printf("## !!! No PC update !!! ##\n");
         }
         printf("##########################\n");
-//        IFIDDebug();
-//        IDEXDebug();
-//        EXMEMDebug();
-//        MEMWBDebug();
+
         if (!hzrddetectSig.IFIDnotWrite){
-            ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
-            debugid[1] = debugid[0];
             if (ifid[1].valid) {
                 switch (counting.format) {
                     case 'R' :
@@ -112,6 +107,8 @@ int main(int argc, char* argv[]) {
                         exit(EXIT_FAILURE);
                 }
             }
+            ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
+            debugid[1] = debugid[0];
         }
         idex[1] = idex[0];  // ID/EX pipeline hands data to EX
         exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM

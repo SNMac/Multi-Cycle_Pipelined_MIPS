@@ -40,6 +40,8 @@ extern DEBUGMEM debugmem[2];
 extern DEBUGWB debugwb[2];
 
 /*============================Stages============================*/
+// TODO
+//  polishing printfs
 
 // Instruction Fetch
 void IF(void) {
@@ -114,7 +116,6 @@ void ID(void) {
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
-    printf("IDForwardAMUX = %u\nIDForwardBMUX = %u\n", IDForwardAMUX, IDForwardBMUX);
     bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 

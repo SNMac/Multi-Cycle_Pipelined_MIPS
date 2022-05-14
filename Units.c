@@ -24,7 +24,6 @@ ID_FORWARD_SIGNAL idfwrdSig;
 MEM_FORWARD_SIGNAL memfwrdSig;
 HAZARD_DETECTION_SIGNAL hzrddetectSig;
 
-
 // from main.c
 extern uint32_t Memory[0x400000];
 extern uint32_t R[32];
@@ -471,7 +470,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         case 0xf :  // lui
             counting.format = 'I';
             printf("name : lui\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 1; ctrlSig.MemtoReg[0] = 1;
@@ -487,7 +485,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         case 0x23 :  // lw
             counting.format = 'I';
             printf("name : lw\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 1;
@@ -504,7 +501,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         case 0xd :  // ori
             counting.format = 'I';
             printf("name : ori\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -521,7 +517,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         case 0xa :  // slti
             counting.format = 'I';
             printf("name : slti\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -538,7 +533,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         case 0xb :  // sltiu
             counting.format = 'I';
             printf("name : sltiu\n");
-            counting.Icount++;
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -555,7 +549,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         case 0x2B :  // sw
             counting.format = 'I';
             printf("name : sw\n");
-            counting.Icount++;
             ctrlSig.ALUSrc = 1;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;

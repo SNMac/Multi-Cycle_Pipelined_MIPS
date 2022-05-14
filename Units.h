@@ -94,6 +94,8 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
     int BTBsize;
     uint32_t BTB[BTBMAX][4];  // Branch Target Buffer
     uint32_t instPC[2];  // [0] : now PC, [1] : previous PC
+    // TODO
+    //  make Pattern History Table
     uint8_t PHT;  // Pattern History table
     uint8_t BHR;  // Branch History Register (4 bits)
     // [i][0] = BranchinstPC, [i][1] = BranchTarget,
