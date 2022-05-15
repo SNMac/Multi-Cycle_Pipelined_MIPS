@@ -102,23 +102,30 @@ void CheckBranch(uint32_t PCvalue) {  // Check if PC is branch instruction
     for (BranchPred.BTBindex[0] = 0; BranchPred.BTBindex[0] < BTBMAX; BranchPred.BTBindex[0]++) {
         if (BranchPred.BTB[BranchPred.BTBindex[0]][0] == PCvalue) {  // PC found in BTB
             BranchPred.AddressHit[0] = 1;  // Branch predicted
+            BranchPred.BTB[BranchPred.BTBindex[0]][2]++;
             break;  // Send out predicted PC
         }
     }
+    // Find PC in DP
+    for (BranchPred.DPindex[0] = 0; BranchPred.DPindex[0] < BTBMAX; BranchPred.DPindex[0]++) {
+        if (BranchPred.DP[BranchPred.DPindex[0]][0] == PCvalue) {
+            // PC found in BTB
+            if (BranchPred.DP[BranchPred.DPindex[0]][1] == 2 || BranchPred.DP[BranchPred.DPindex[0]][1] == 3)  {
+                BranchPred.Predict[0] = 1;  // Predict branch taken
+            }
+            else {
+                BranchPred.Predict[0] = 0;  // Predict branch not taken
+            }
+            BranchPred.DP[BranchPred.DPindex[0]][2]++;
+            return;
+        }
+    }
     // PC not found in BTB
-    if (BranchPred.BTBindex[0] == BTBMAX) {
+    if (BranchPred.BTBindex[0] == BTBMAX && BranchPred.DPindex[0] == BTBMAX) {
         BranchPred.AddressHit[0] = 0;  // Branch not predicted
         BranchPred.Predict[0] = 0;  // Predict branch not taken
         return;
     }
-    // PC found in BTB
-    if (BranchPred.BTB[BranchPred.BTBindex[0]][2] == 2 || BranchPred.BTB[BranchPred.BTBindex[0]][2] == 3)  {
-        BranchPred.Predict[0] = 1;  // Predict branch taken
-    }
-    else {
-        BranchPred.Predict[0] = 0;  // Predict branch not taken
-    }
-    BranchPred.BTB[BranchPred.BTBindex[0]][3]++;
     return;
 }
 
@@ -126,7 +133,7 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
     if (Branch) {  // beq, bne
         if (BranchPred.AddressHit[1]) {  // PC found in BTB
             if (PCBranch) {  // Branch taken
-                PBtaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
+                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1]);
                 counting.takenBranch++;
                 if (BranchPred.Predict[1]) {  // Predict branch taken, HIT
                     counting.PredictHitCount++;
@@ -137,7 +144,7 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
             }
 
             else {  // Branch not taken
-                PBnottaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
+                PBnottaken(BranchPred.DP[BranchPred.DPindex[1]][1]);
                 counting.nottakenBranch++;
                 if (BranchPred.Predict[1]) {  // Predict branch taken
                     ctrlSig.IFFlush = 1;
@@ -150,7 +157,7 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
         else {  // PC not found in BTB, Predicted PC + 4
             BranchBufferWrite(BranchPred.instPC[1], BranchAddr);
             if (PCBranch) {  // Branch taken
-                PBtaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
+                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1]);
                 counting.takenBranch++;
                 ctrlSig.IFFlush = 1;
             }
@@ -163,34 +170,52 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
 
 void BranchBufferWrite(uint32_t WritePC, uint32_t Address) {  // Write PC and BranchAddr to BTB
     if (BranchPred.BTBsize >= BTBMAX) {  // BTB has no space
-        uint32_t min = BranchPred.BTB[0][3];
-        int minindex;
+        uint32_t BTBmin = BranchPred.BTB[0][2];
+        int BTBminindex;
         for (BranchPred.BTBindex[1] = 0; BranchPred.BTBindex[1] < BTBMAX; BranchPred.BTBindex[1]++) {
-            if (min > BranchPred.BTB[BranchPred.BTBindex[1]][3]) {
-                min = BranchPred.BTB[BranchPred.BTBindex[1]][3];
-                minindex = BranchPred.BTBindex[1];
+            if (BTBmin > BranchPred.BTB[BranchPred.BTBindex[1]][2]) {
+                BTBmin = BranchPred.BTB[BranchPred.BTBindex[1]][2];
+                BTBminindex = BranchPred.BTBindex[1];
             }
         }
         // Substitute low frequency used branch
-        BranchPred.BTB[minindex][0] = WritePC;
-        BranchPred.BTB[minindex][1] = Address;
-        BranchPred.BTB[minindex][2] = 1;
-        BranchPred.BTB[minindex][3] = 0;
-        BranchPred.BTBindex[1] = minindex;
+        BranchPred.BTB[BTBminindex][0] = WritePC;
+        BranchPred.BTB[BTBminindex][1] = Address;
+        BranchPred.BTB[BTBminindex][2] = 0;
+        BranchPred.BTBindex[1] = BTBminindex;
+    }
+    if (BranchPred.DPsize >= BTBMAX) {  // DP has no space
+        uint32_t DPmin = BranchPred.DP[0][2];
+        int DPminindex;
+        for (BranchPred.DPindex[1] = 0; BranchPred.DPindex[1] < BTBMAX; BranchPred.DPindex[1]++) {
+            if (DPmin > BranchPred.DP[BranchPred.DPindex[1]][2]) {
+                DPmin = BranchPred.DP[BranchPred.DPindex[1]][2];
+                DPminindex = BranchPred.DPindex[1];
+            }
+        }
+        // Substitute low frequency used branch
+        BranchPred.DP[DPminindex][0] = WritePC;
+        BranchPred.DP[DPminindex][1] = 1;
+        BranchPred.DP[DPminindex][2] = 0;
+        BranchPred.DPindex[1] = DPminindex;
         return;
     }
     BranchPred.BTB[BranchPred.BTBsize][0] = WritePC;
     BranchPred.BTB[BranchPred.BTBsize][1] = Address;
+    BranchPred.DP[BranchPred.DPsize][0] = WritePC;
+    BranchPred.BTBindex[1] = BranchPred.BTBsize;
+    BranchPred.DPindex[1] = BranchPred.DPsize;
     BranchPred.BTBsize++;
+    BranchPred.DPsize++;
     return;
 }
 
 void PBtaken(uint8_t Predbit) {  // Update prediction bits to taken
     if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
-        BranchPred.BTB[BranchPred.BTBindex[1]][2] =  3;  // PB = 11
+        BranchPred.DP[BranchPred.DPindex[1]][1] =  3;  // PB = 11
     }
     else if (Predbit == 0) {  // PB == 00
-        BranchPred.BTB[BranchPred.BTBindex[1]][2] = 1;  // PB = 01
+        BranchPred.DP[BranchPred.DPindex[1]][1] = 1;  // PB = 01
     }
     else {
         fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
@@ -201,10 +226,10 @@ void PBtaken(uint8_t Predbit) {  // Update prediction bits to taken
 
 void PBnottaken(uint8_t Predbit) {  // Update prediction bits to not taken
     if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
-        BranchPred.BTB[BranchPred.BTBindex[1]][2] =  0;  // PB = 00
+        BranchPred.DP[BranchPred.DPindex[1]][1] =  0;  // PB = 00
     }
     else if (Predbit == 3) {  // PB == 11
-        BranchPred.BTB[BranchPred.BTBindex[1]][2] =  2;  // PB = 10
+        BranchPred.DP[BranchPred.DPindex[1]][1] =  2;  // PB = 10
     }
     else {
         fprintf(stderr, "ERROR: Prediction bit is wrong.\n");

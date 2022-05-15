@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "Debug.h"
-#include "main.h"
 #include "Units.h"
 
 DEBUGIF debugif;
@@ -147,7 +146,7 @@ void printID(void) {
     printf("%s\n", debugid[1].instprint);
 
     if (hzrddetectSig.ControlNOP) {
-        printf("!!Hazard detected. Adding NOP.!!\n");
+        printf("!!Hazard detected. Adding NOP!!\n");
     }
     else {
         printUpdateBTB();

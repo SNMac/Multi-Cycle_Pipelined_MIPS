@@ -34,12 +34,22 @@ extern DEBUGWB debugwb[2];
 
 int main(int argc, char* argv[]) {
     clock_t start = clock();
+    char* PredSelector;
     char* filename;
     if (argc == 2) {
         filename = argv[1];
     }
+    else if (argc >= 3) {
+        filename = argv[1];
+//        PredSelector = argv[2];
+    }
     else {
         filename = "input4.bin";
+        // TODO
+        //  make predict unit selector
+//        printf("Select branch predictor.\n");
+//        printf("(1 : One-level Branch Predictor, 2 :Two-level Global History Branch Predictor) : \n");
+//        scanf("%c", PredSelector);
     }
   
     FILE* fp = fopen(filename, "rb");
@@ -72,6 +82,7 @@ int main(int argc, char* argv[]) {
         if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
             break;
         }
+
         IF();
         ID();
         EX();
@@ -101,8 +112,13 @@ int main(int argc, char* argv[]) {
 
 void Firstinit(void) {
     memset(&PC, 0, sizeof(PROGRAM_COUNTER));
+    memset(&BranchPred, 0, sizeof(BRANCH_PREDICT));
     for (int i = 0; i < BTBMAX; i++) {
-        BranchPred.BTB[i][2] = 1;  // Initialize predict bits to 1
+        BranchPred.DP[i][1] = 1;  // Initialize Direction Predictor to 1
+    }
+    for (int i = 0; i < BHTMAX; i++) {
+        BranchPred.BHT[i][0] = i;
+        BranchPred.BHT[i][1] = 1;  // Initialize Branch History Table to 1
     }
     PC.valid = 1;
     ifid[0].valid = 1;
@@ -132,6 +148,7 @@ void PipelineHandsOver(void) {
         BranchPred.Predict[1] = BranchPred.Predict[0];
         BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
         BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
+        BranchPred.DPindex[1] = BranchPred.DPindex[0];
         BranchPred.instPC[1] = BranchPred.instPC[0];
     }
 
@@ -178,11 +195,19 @@ void printFinalresult(void) {
     }
     printf("############################################\n");
 
+    // Print DP
+    printf("\n\n###### Direction Predictor #######\n");
+    printf("## Branch PCs ## Predicted bits ##\n");
+    for (int i = 0; i < BranchPred.DPsize; i++) {
+        printf("##    0x%08x    ##     %d    ##\n", BranchPred.DP[i][0], BranchPred.DP[i][1]);
+    }
+    printf("##################################\n");
+
     // Print BTB
-    printf("\n\n########################## Branch Target Buffer ###########################\n");
-    printf("## Branch PCs ## Predicted target ## Prediction bits ## Frequency of use ##\n");
+    printf("\n\n################ Branch Target Buffer #################\n");
+    printf("## Branch PCs ## Predicted target ##Frequency of use ##\n");
     for (int i = 0; i < BranchPred.BTBsize; i++) {
-        printf("## 0x%08x ##    0x%08x    ##%16d ## %16d ##\n", BranchPred.BTB[i][0], BranchPred.BTB[i][1], BranchPred.BTB[i][2], BranchPred.BTB[i][3]);
+        printf("## 0x%08x ##    0x%08x    ## %16d ##\n", BranchPred.BTB[i][0], BranchPred.BTB[i][1], BranchPred.BTB[i][2]);
     }
     printf("###########################################################################\n");
 

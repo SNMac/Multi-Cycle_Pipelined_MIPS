@@ -7,7 +7,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#define BTBMAX 8
+#define BTBMAX 16
+#define BHTMAX 16  // 2^GHR
+#define GHRMAX 4
+
 
 /* Instruction */
 typedef struct _INSTRUCTION {
@@ -104,14 +107,18 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
     bool AddressHit[2];  // [0] : now PC, [1] : previous PC
     int BTBindex[2];  // [0] : now PC, [1] : previous PC
     int BTBsize;
-    uint32_t BTB[BTBMAX][4];  // Branch Target Buffer
+    int DPindex[2];
+    int DPsize;
+    uint32_t BTB[BTBMAX][3];  // Branch Target Buffer
+    // [i][0] = Branch instruction PC, [i][1] = Branch Target, [i][2] = Frequency (How many times used)
+    uint32_t DP[BTBMAX][3];  // Direction Predictor
+    // [i][0] = Branch instruction PC, [i][1] = Prediction bits, [i][2] = Frequency (How many times used)
     uint32_t instPC[2];  // [0] : now PC, [1] : previous PC
+
     // TODO
     //  make Pattern History Table
-    uint8_t PHT;  // Pattern History table
-    uint8_t BHR;  // Branch History Register (4 bits)
-    // [i][0] = BranchinstPC, [i][1] = BranchTarget,
-    // [i][2] = Prediction bits, [i][3] = Frequency (How many times used)
+    uint8_t BHT[BHTMAX][2];  // Branch History table (2^GHRMAX size)
+    uint8_t GHR[GHRMAX];  // Global History Register (4 bits)
 }BRANCH_PREDICT;
 
 /* Data units */

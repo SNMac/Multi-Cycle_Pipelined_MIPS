@@ -2,7 +2,6 @@
 // Created by SNMac on 2022/05/09.
 //
 
-#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -33,7 +32,7 @@ extern ID_FORWARD_SIGNAL idfwrdSig;
 extern MEM_FORWARD_SIGNAL memfwrdSig;
 extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
 
-// from Debug.h
+// from Debug.c
 extern DEBUGIF debugif;
 extern DEBUGID debugid[2];
 extern DEBUGEX debugex[2];
@@ -72,7 +71,6 @@ void IF(void) {
 void ID(void) {
     idex[0].valid = ifid[1].valid;
     debugex[0].valid = ifid[1].valid;
-
 
     // Decode instruction
     INSTRUCTION inst;
@@ -119,7 +117,7 @@ void ID(void) {
     uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
 
     // Update branch result to BTB
-    debugid[1].PB = BranchPred.BTB[BranchPred.BTBindex[1]][2];
+    debugid[1].PB = BranchPred.DP[BranchPred.DPindex[1]][1];
     UpdateBranchBuffer(Branch, PCBranch, BranchAddr);
 
     // Select PC address
