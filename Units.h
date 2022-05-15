@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #define BTBMAX 16
 #define BHTMAX 16  // 2^GHR
-#define GHRMAX 4
 
 
 /* Instruction */
@@ -118,7 +117,7 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
     // TODO
     //  make Pattern History Table
     uint8_t BHT[BHTMAX][2];  // Branch History table (2^GHRMAX size)
-    uint8_t GHR[GHRMAX];  // Global History Register (4 bits)
+    uint8_t GHR;  // Global History Register (4 bits)
 }BRANCH_PREDICT;
 
 /* Data units */
