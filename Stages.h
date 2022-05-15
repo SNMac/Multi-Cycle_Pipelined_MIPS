@@ -7,18 +7,6 @@
 
 #include <stdint.h>
 
-/* Instruction */
-typedef struct _INSTRUCTION {
-    uint32_t address;
-    uint8_t opcode;
-    uint8_t rs;
-    uint8_t rt;
-    uint8_t rd;
-    uint8_t shamt;
-    uint16_t imm;
-    uint8_t funct;
-}INSTRUCTION;
-
 /* Stages */
 void IF(void);  // Instruction Fetch
 void ID(void);  // Instruction Decode

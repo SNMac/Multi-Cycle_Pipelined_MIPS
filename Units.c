@@ -11,7 +11,7 @@
 #include "Units.h"
 #include "main.h"
 
-PROGRAM_COUNTER PC;
+PROGRAM_COUNTER PC[2];
 IFID ifid[2];
 IDEX idex[2];
 EXMEM exmem[2];
@@ -30,6 +30,19 @@ extern uint32_t R[32];
 extern COUNTING counting;
 
 /*============================Data units============================*/
+
+// [Instruction decoder]
+void InstDecoder(INSTRUCTION *inst, uint32_t instruction) {
+    memset(inst, 0, sizeof(INSTRUCTION));
+    inst->address = instruction & 0x3ffffff;
+    inst->opcode = (instruction & 0xfc000000) >> 26;
+    inst->rs = (instruction & 0x03e00000) >> 21;
+    inst->rt = (instruction & 0x001f0000) >> 16;
+    inst->rd = (instruction & 0x0000f800) >> 11;
+    inst->shamt = (instruction & 0x000007c0) >> 6;
+    inst->imm = instruction & 0x0000ffff;
+    inst->funct = inst->imm & 0x003f;
+}
 
 // [Instruction memory]
 uint32_t InstMem(uint32_t Readaddr) {
@@ -61,7 +74,7 @@ void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite) {
 // [Data memory]
 uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite) {
     uint32_t Readdata = 0;
-    if (MemRead == 1 && MemWrite == 0) {  // MemRead asserted, MemWrite De-asserted
+    if (MemRead) {  // MemRead asserted, MemWrite De-asserted
         if (Addr > 0x1000000) {  // loading outside of memory
             fprintf(stderr, "ERROR: Accessing outside of memory\n");
             exit(EXIT_FAILURE);
@@ -70,7 +83,7 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite)
         printf("Memory[0x%08x] load -> 0x%x (%d)\n", Addr, Memory[Addr / 4], Memory[Addr / 4]);
         counting.Memcount++;
     }
-    else if (MemRead == 0 && MemWrite == 1) {  // MemRead De-asserted, MemWrite asserted
+    else if (MemWrite) {  // MemRead De-asserted, MemWrite asserted
         if (Addr > 0x1000000) {  // Writing outside of memory
             fprintf(stderr, "ERROR: Accessing outside of memory\n");
             exit(EXIT_FAILURE);
@@ -164,9 +177,6 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
             else {  // Branch not taken
                 counting.nottakenBranch++;
             }
-        }
-        if (ctrlSig.IFFlush) {  // Flushing IF instruction
-            ifid[0].instruction = 0;
         }
     }
 }
@@ -700,21 +710,21 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
         printf("<<Load-use hazard detected. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
-        memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+        hzrddetectSig.ControlNOP = 1;
     }
     if (IDEXRegWrite && (BEQ | BNE | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
         printf("<<Register Read data hazard detected from IDEX. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.BTBnotWrite = 1;
-        memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+        hzrddetectSig.ControlNOP = 1;
     }
     if (EXMEMMemRead && (BEQ | BNE | Jump) && ((EXMEMWritereg == IFIDrs) || (EXMEMWritereg == IFIDrt))) {
         printf("<<Register Read data hazard detected from EXMEM. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.BTBnotWrite = 1;
-        memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+        hzrddetectSig.ControlNOP = 1;
     }
 }
 

@@ -17,4 +17,10 @@ typedef struct _COUNTING {
     int nottakenBranch;  // not taken Branch count
 }COUNTING;
 
+void Firstinit(void);
+void printnextPC(void);
+void PipelineHandsOver(void);
+void countingFormat(void);
+void printFinalresult(void);
+
 #endif //CAMP_PROJECT3_MAIN_H

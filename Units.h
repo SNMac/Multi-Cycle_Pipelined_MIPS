@@ -9,6 +9,18 @@
 #include <stdbool.h>
 #define BTBMAX 8
 
+/* Instruction */
+typedef struct _INSTRUCTION {
+    uint32_t address;
+    uint8_t opcode;
+    uint8_t rs;
+    uint8_t rt;
+    uint8_t rd;
+    uint8_t shamt;
+    uint16_t imm;
+    uint8_t funct;
+}INSTRUCTION;
+
 /* Program Counter */
 typedef struct _PROGRAM_COUNTER {
     bool valid;
@@ -84,7 +96,7 @@ typedef struct _MEM_FORWARD_SIGNAL {
 }MEM_FORWARD_SIGNAL;
 
 typedef struct _HAZARD_DETECTION_SIGNAL {  // Hazard detection unit signals
-    bool PCnotWrite, IFIDnotWrite, BTBnotWrite;;
+    bool PCnotWrite, IFIDnotWrite, BTBnotWrite, ControlNOP;
 }HAZARD_DETECTION_SIGNAL;
 
 typedef struct _BRANCH_PREDICT {  // Branch prediction unit
@@ -103,12 +115,13 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
 }BRANCH_PREDICT;
 
 /* Data units */
+void InstDecoder(INSTRUCTION *inst, uint32_t instruction);  // Instruction decoder
 uint32_t InstMem(uint32_t Readaddr);  // Instruction memory
 uint32_t* RegsRead(uint8_t Readreg1, uint8_t Readreg2);  // Registers (ID)
-void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite);  // Register (WB)
+void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite);  // Registers (WB)
 uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite);  // Data memory
-void CheckBranch(uint32_t PCvalue);  // Check branch in IF
-void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr);
+void CheckBranch(uint32_t PCvalue);  // Check branch in IF stage
+void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr);  // Update BTB
 void BranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
 
 uint32_t ALU(uint32_t input1, uint32_t input2, char ALUSig);  // ALU

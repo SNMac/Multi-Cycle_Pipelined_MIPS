@@ -3,6 +3,7 @@
 //
 
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -32,8 +33,8 @@ extern ID_FORWARD_SIGNAL idfwrdSig;
 extern MEM_FORWARD_SIGNAL memfwrdSig;
 extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
 
-
 // from Debug.h
+extern DEBUGIF debugif;
 extern DEBUGID debugid[2];
 extern DEBUGEX debugex[2];
 extern DEBUGMEM debugmem[2];
@@ -45,10 +46,12 @@ extern DEBUGWB debugwb[2];
 
 // Instruction Fetch
 void IF(void) {
+    debugif.IFPC = PC.PC;
     printf("\n<<<<<<<<<<<<<<<<<<<<<IF>>>>>>>>>>>>>>>>>>>>>\n");
     if (PC.PC == 0xffffffff) {
         ifid[0].valid = 0;
         PC.valid = 0;
+        debugid[0].valid = PC.valid;
         printf("End of program\n");
         printf("Wait for finishing other stage\n");
         printf("**********************************************\n");
@@ -66,44 +69,40 @@ void IF(void) {
     CheckBranch(PC.PC);
 
     // Save data to pipeline
-    if (!hzrddetectSig.IFIDnotWrite){
-        ifid[0].instruction = instruction; ifid[0].PCadd4 = PC.PC + 4;
-
-        // For visible state
-        debugid[0].IDPC = PC.PC; debugid[0].IDinst = instruction;
-    }
-
+    ifid[0].instruction = instruction; ifid[0].PCadd4 = PC.PC + 4;
     printf("**********************************************\n");
 
+    // For visible state
+    debugif.IFinst = instruction;
     return;
 }
 
 // Instruction Decode
 void ID(void) {
     idex[0].valid = ifid[1].valid;
+    debugex[0].valid = ifid[1].valid;
     printf("\n<<<<<<<<<<<<<<<<<<<<<ID>>>>>>>>>>>>>>>>>>>>>\n");
 
+    // Decode instruction
     INSTRUCTION inst;
-    inst.address = ifid[1].instruction & 0x3ffffff;  // for J-format
-    inst.opcode = (ifid[1].instruction & 0xfc000000) >> 26;
-    inst.rs = (ifid[1].instruction & 0x03e00000) >> 21;
-    inst.rt = (ifid[1].instruction & 0x001f0000) >> 16;
-    inst.rd = (ifid[1].instruction & 0x0000f800) >> 11;
-    inst.shamt = (ifid[1].instruction & 0x000007c0) >> 6;  // for sll, srl
-    inst.imm = ifid[1].instruction & 0x0000ffff;  // for I-format
-    inst.funct = inst.imm & 0x003f;  // for R-format
+    InstDecoder(&inst, ifid[1].instruction);
 
     // Set control signals
     CtrlUnit(inst.opcode, inst.funct);
-    uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
 
     // Load-use, branch hazard detect
+    uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
     HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
                      idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+    if (hzrddetectSig.ControlNOP) {  // adding nop
+        memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+    }
 
     // Avoid ID-WB hazard
-    MemtoRegMUX = MUX_4(memwb[1].ALUresult, memwb[1].Readdata, memwb[1].PCadd8, memwb[1].upperimm, memwb[1].MemtoReg);
-    RegsWrite(memwb[1].Writereg, MemtoRegMUX, memwb[1].RegWrite);
+    if(memwb[1].valid) {
+        MemtoRegMUX = MUX_4(memwb[1].ALUresult, memwb[1].Readdata, memwb[1].PCadd8, memwb[1].upperimm, memwb[1].MemtoReg);
+        RegsWrite(memwb[1].Writereg, MemtoRegMUX, memwb[1].RegWrite);
+    }
 
     // Register fetch
     uint32_t* Regs_return = RegsRead(inst.rs, inst.rt);
@@ -172,6 +171,11 @@ void ID(void) {
     idex[0].MemtoReg[0] = ctrlSig.MemtoReg[0]; idex[0].MemtoReg[1] = ctrlSig.MemtoReg[1];
     idex[0].RegWrite = ctrlSig.RegWrite; idex[0].ALUOp = ctrlSig.ALUOp;
 
+    // Flushing IF instruction
+    if (ctrlSig.IFFlush) {
+        ifid[0].instruction = 0;
+    }
+
     if (!hzrddetectSig.BTBnotWrite) {
         BranchPred.Predict[1] = BranchPred.Predict[0];
         BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
@@ -182,13 +186,14 @@ void ID(void) {
     printf("**********************************************\n");
 
     // For visible state
-    debugex[0].EXPC = debugid[1].IDPC; debugex[0].EXinst = debugid[1].IDinst;
+    debugid[1].inst = inst;
     return;
 }
 
 // Execute
 void EX(void) {
     exmem[0].valid = idex[1].valid;
+    debugmem[0].valid = idex[1].valid;
     printf("\n<<<<<<<<<<<<<<<<<<<<<EX>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(idex[1].valid)) {
         printf("ID/EX pipeline is invalid\n");
@@ -235,13 +240,15 @@ void EX(void) {
     printf("**********************************************\n");
 
     // For visible state
-    debugmem[0].MEMPC = debugex[1].EXPC; debugmem[0].MEMinst = debugex[1].EXinst;
+    debugex[1].ALUinput1 = ALUinput1; debugex[1].ALUinput2 = ALUinput2;
+    debugex[1].ALUresult = ALUresult;
     return;
 }
 
 // Memory Access
 void MEM(void) {
     memwb[0].valid = exmem[1].valid;
+    debugwb[0].valid = exmem[1].valid;
     printf("\n<<<<<<<<<<<<<<<<<<<<<MEM>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(exmem[1].valid)) {
         printf("EX/MEM pipeline is invalid\n");
@@ -270,7 +277,8 @@ void MEM(void) {
     printf("**********************************************\n");
 
     // For visible state
-    debugwb[0].WBPC = debugmem[1].MEMPC; debugwb[0].WBinst = debugmem[1].MEMinst;
+    debugmem[1].MemRead = exmem[1].MemRead; debugmem[1].MemWrite = exmem[1].MemWrite;
+    debugmem[1].Addr = exmem[1].ALUresult; debugmem[1].Writedata = MemWriteDataMUX;
     return;
 }
 
@@ -294,5 +302,8 @@ void WB(void) {
     }
 
     printf("**********************************************\n");
+
+    // For visible state
+    debugwb[1].RegWrite = memwb[1].RegWrite; debugwb[1].Writereg = memwb[1].Writereg;
     return;
 }
