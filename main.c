@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
         filename = argv[1];
     }
     else {
-        filename = "Simple3.bin";
+        filename = "input4.bin";
     }
   
     FILE* fp = fopen(filename, "rb");
@@ -59,10 +59,6 @@ int main(int argc, char* argv[]) {
         index++;
     }
 
-    if (index == 0) {
-        goto END;
-    }
-
     for (int i = 0; i < index; i++) {
         printf("Memory [%d] : 0x%08x\n", i, Memory[i]);
     }
@@ -70,6 +66,9 @@ int main(int argc, char* argv[]) {
     Firstinit();
 
     while(1) {
+        if (index == 0) {
+            break;
+        }
         if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
             break;
         }
@@ -78,7 +77,6 @@ int main(int argc, char* argv[]) {
         EX();
         MEM();
         WB();
-        printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
         printIF();
         printID();
         printEX();
@@ -94,7 +92,6 @@ int main(int argc, char* argv[]) {
         printf("\n================================ CC %d ================================\n", counting.cycle);
     }
 
-    END:
     printFinalresult();
     fclose(fp);
     clock_t end = clock();
@@ -130,6 +127,14 @@ void PipelineHandsOver(void) {
     if (!hzrddetectSig.IFIDnotWrite){
         ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
     }
+
+    if (!hzrddetectSig.BTBnotWrite) {
+        BranchPred.Predict[1] = BranchPred.Predict[0];
+        BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
+        BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
+        BranchPred.instPC[1] = BranchPred.instPC[0];
+    }
+
     idex[1] = idex[0];  // ID/EX pipeline hands data to EX
     exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM
     memwb[1] = memwb[0];  // MEM/WB pipeline hands data to WB

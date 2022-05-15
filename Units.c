@@ -66,9 +66,6 @@ void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite) {
         R[Writereg] = Writedata;  // GPR write enabled
         return;
     }
-    else {  // RegWrite De-asserted
-        return;  // GPR write disabled
-    }
 }
 
 // [Data memory]
@@ -80,7 +77,6 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite)
             exit(EXIT_FAILURE);
         }
         Readdata = Memory[Addr / 4];  // Memory read port return load value
-        printf("Memory[0x%08x] load -> 0x%x (%d)\n", Addr, Memory[Addr / 4], Memory[Addr / 4]);
         counting.Memcount++;
     }
     else if (MemWrite) {  // MemRead De-asserted, MemWrite asserted
@@ -89,11 +85,7 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite)
             exit(EXIT_FAILURE);
         }
         Memory[Addr / 4] = Writedata;  // Memory write enabled
-        printf("Memory[0x%08x] <- store 0x%x (%d)\n", Addr, Memory[Addr / 4], Memory[Addr / 4]);
         counting.Memcount++;
-    }
-    else {  // MemRead, MemWrite De-asserted
-        printf("There is no memory access\n");
     }
     return Readdata;
 }
@@ -104,7 +96,6 @@ void CheckBranch(uint32_t PCvalue) {  // Check if PC is branch instruction
     if (BranchPred.BTBsize == 0) {  // BTB is empty
         BranchPred.AddressHit[0] = 0;  // Branch not predicted
         BranchPred.Predict[0] = 0;  // Predict branch not taken
-        printf("<BTB hasn't PC value.>\n");
         return;
     }
     // Find PC in BTB
@@ -118,17 +109,14 @@ void CheckBranch(uint32_t PCvalue) {  // Check if PC is branch instruction
     if (BranchPred.BTBindex[0] == BTBMAX) {
         BranchPred.AddressHit[0] = 0;  // Branch not predicted
         BranchPred.Predict[0] = 0;  // Predict branch not taken
-        printf("<BTB hasn't PC value.>\n");
         return;
     }
     // PC found in BTB
     if (BranchPred.BTB[BranchPred.BTBindex[0]][2] == 2 || BranchPred.BTB[BranchPred.BTBindex[0]][2] == 3)  {
         BranchPred.Predict[0] = 1;  // Predict branch taken
-        printf("<BTB has PC value. Predict that branch is taken.>\n");
     }
     else {
         BranchPred.Predict[0] = 0;  // Predict branch not taken
-        printf("<BTB has PC value. Predict that branch is not taken.>\n");
     }
     BranchPred.BTB[BranchPred.BTBindex[0]][3]++;
     return;
@@ -138,39 +126,31 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
     if (Branch) {  // beq, bne
         if (BranchPred.AddressHit[1]) {  // PC found in BTB
             if (PCBranch) {  // Branch taken
-                printf("Branch taken, ");
                 PBtaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
                 counting.takenBranch++;
                 if (BranchPred.Predict[1]) {  // Predict branch taken, HIT
-                    printf("predicted branch taken.\nBranch prediction HIT.\n");
                     counting.PredictHitCount++;
                 }
                 else {  // Predict branch not taken
-                    printf("predicted branch not taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
                     ctrlSig.IFFlush = 1;
                 }
             }
 
             else {  // Branch not taken
-                printf("Branch not taken, ");
                 PBnottaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
                 counting.nottakenBranch++;
                 if (BranchPred.Predict[1]) {  // Predict branch taken
-                    printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
                     ctrlSig.IFFlush = 1;
                 }
                 else {  // Predict branch not taken, HIT
-                    printf("predicted branch not taken.\nBranch prediction HIT.\n");
                     counting.PredictHitCount++;
                 }
             }
         }
         else {  // PC not found in BTB, Predicted PC + 4
             BranchBufferWrite(BranchPred.instPC[1], BranchAddr);
-            printf("## Write PC to BTB ##\n");
             if (PCBranch) {  // Branch taken
                 PBtaken(BranchPred.BTB[BranchPred.BTBindex[1]][2]);
-                printf("Instruction is branch. FLushing IF instruction.\n");
                 counting.takenBranch++;
                 ctrlSig.IFFlush = 1;
             }
@@ -207,11 +187,9 @@ void BranchBufferWrite(uint32_t WritePC, uint32_t Address) {  // Write PC and Br
 
 void PBtaken(uint8_t Predbit) {  // Update prediction bits to taken
     if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
-        printf("<Update PB to 3>\n");
         BranchPred.BTB[BranchPred.BTBindex[1]][2] =  3;  // PB = 11
     }
     else if (Predbit == 0) {  // PB == 00
-        printf("<Update PB to 1>\n");
         BranchPred.BTB[BranchPred.BTBindex[1]][2] = 1;  // PB = 01
     }
     else {
@@ -223,11 +201,9 @@ void PBtaken(uint8_t Predbit) {  // Update prediction bits to taken
 
 void PBnottaken(uint8_t Predbit) {  // Update prediction bits to not taken
     if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
-        printf("<Update PB to 0>\n");
         BranchPred.BTB[BranchPred.BTBindex[1]][2] =  0;  // PB = 00
     }
     else if (Predbit == 3) {  // PB == 11
-        printf("<Update PB to 2>\n");
         BranchPred.BTB[BranchPred.BTBindex[1]][2] =  2;  // PB = 10
     }
     else {
@@ -357,7 +333,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
     switch (opcode) {  // considered don't care as 0 or not written
         case 0x0 :  // R-format
             counting.format = 'R';
-            printf("name : R-format\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 1;  // Write register = rd
             ctrlSig.ALUSrc = 0;  // ALU input2 = rt
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;  // Write data = ALU result
@@ -383,7 +358,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x8 :  // addi
             counting.format = 'I';
-            printf("name : addi\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -399,7 +373,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x9 :  // addiu
             counting.format = 'I';
-            printf("name : addiu\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -415,7 +388,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0xc :  // andi
             counting.format = 'I';
-            printf("name : andi\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -431,7 +403,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x4 :  // beq
             counting.format = 'I';
-            printf("name : beq\n");
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
@@ -444,7 +415,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x5 :  // bne
             counting.format = 'I';
-            printf("name : bne\n");
             ctrlSig.ALUSrc = 0;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
@@ -457,7 +427,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x2 :  // j
             counting.format = 'J';
-            printf("name : j\n");
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
             ctrlSig.MemWrite = 0;
@@ -469,7 +438,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x3 :  // jal
             counting.format = 'J';
-            printf("name : jal\n");
             ctrlSig.RegWrite = 1;
             ctrlSig.RegDst[1] = 1; ctrlSig.RegDst[0] = 0;
             ctrlSig.MemtoReg[1] = 1; ctrlSig.MemtoReg[0] = 0;
@@ -479,7 +447,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
         
         case 0xf :  // lui
             counting.format = 'I';
-            printf("name : lui\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 1; ctrlSig.MemtoReg[0] = 1;
@@ -494,7 +461,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x23 :  // lw
             counting.format = 'I';
-            printf("name : lw\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 1;
@@ -510,7 +476,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0xd :  // ori
             counting.format = 'I';
-            printf("name : ori\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -526,7 +491,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0xa :  // slti
             counting.format = 'I';
-            printf("name : slti\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -542,7 +506,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0xb :  // sltiu
             counting.format = 'I';
-            printf("name : sltiu\n");
             ctrlSig.RegDst[1] = 0; ctrlSig.RegDst[0] = 0;
             ctrlSig.ALUSrc = 1;
             ctrlSig.MemtoReg[1] = 0; ctrlSig.MemtoReg[0] = 0;
@@ -558,7 +521,6 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 
         case 0x2B :  // sw
             counting.format = 'I';
-            printf("name : sw\n");
             ctrlSig.ALUSrc = 1;
             ctrlSig.RegWrite = 0;
             ctrlSig.MemRead = 0;
@@ -624,14 +586,12 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
         if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
             fwrdSig.EXMEMupperimmA = 1;
         }
-        printf("<ALU input1 forwarded from EX/MEM pipeline>\n");
     }
     if (EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt)) {
         fwrdSig.ForwardB[1] = 1; fwrdSig.ForwardB[0] = 0;  // ForwardB = 10
         if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
             fwrdSig.EXMEMupperimmB = 1;
         }
-        printf("<ALU input2 forwarded from EX/MEM pipeline>\n");
     }
 
     // MEM hazard
@@ -639,13 +599,11 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
         !( EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrs) ) &&
         (MEMWBWritereg == IDEXrs)) {
         fwrdSig.ForwardA[1] = 0; fwrdSig.ForwardA[0] = 1;  // ForwardA = 01
-        printf("<ALU input1 forwarded from MEM/WB pipeline>\n");
     }
     if (MEMWBRegWrite && (MEMWBWritereg != 0) &&
         !( EXMEMRegWrite && (EXMEMWritereg != 0) && (EXMEMWritereg == IDEXrt) ) &&
         (MEMWBWritereg == IDEXrt)) {
         fwrdSig.ForwardB[1] = 0; fwrdSig.ForwardB[0] = 1;  // ForwardB = 01
-        printf("<ALU input2 forwarded from MEM/WB pipeline>\n");
     }
     return;
 }
@@ -655,12 +613,10 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
     memset(&idfwrdSig, 0, sizeof(ID_FORWARD_SIGNAL));
     // ID hazard
     if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs)) {
-        idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[1] = 1;  // IDForwardA = 11
-        printf("<Register Read data1 forwarded from ID/EX pipeline>\n");
+        idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[0] = 1;  // IDForwardA = 11
     }
     if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt)) {
-        idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[1] = 1;  // IDForwardB = 11
-        printf("<Register Read data2 forwarded from ID/EX pipeline>\n");
+        idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[0] = 1;  // IDForwardB = 11
     }
 
     // EX hazard
@@ -668,13 +624,11 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
         !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) ) &&
         (EXMEMWritereg == IFIDrs)) {
         idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[0] = 0;  // IDForwardA = 10
-        printf("<Register Read data1 forwarded from EX/MEM pipeline>\n");
     }
     if (EXMEMRegWrite && (EXMEMWritereg != 0) &&
         !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) ) &&
         (EXMEMWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[0] = 0;  // IDForwardB = 10
-        printf("<Register Read data2 forwarded from EX/MEM pipeline>\n");
     }
 
     // MEM hazard
@@ -683,14 +637,13 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
         !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) ) && (EXMEMWritereg == IFIDrs) )
         && (MEMWBWritereg == IFIDrs)) {
         idfwrdSig.IDForwardA[1] = 0; idfwrdSig.IDForwardA[0] = 1;  // IDForwardA = 01
-        printf("<Register Read data1 forwarded from MEM/WB pipeline>\n");
+
     }
     if (MEMWBRegWrite && (MEMWBWritereg != 0) &&
         !( EXMEMRegWrite && (EXMEMWritereg != 0) &&
            !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) ) && (EXMEMWritereg == IFIDrt) )
         && (MEMWBWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 0; idfwrdSig.IDForwardB[0] = 1;  // IDForwardB = 01
-        printf("<Register Read data2 forwarded from MEM/WB pipeline>\n");
     }
 }
 
@@ -698,7 +651,6 @@ void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, 
     memset(&memfwrdSig, 0, sizeof(MEM_FORWARD_SIGNAL));
     if (MEMWBRegWrite && EXMEMMemWrite && (MEMWBWritereg != 0) && (MEMWBWritereg == EXMEMrt)) {
         memfwrdSig.MEMForward = 1;
-        printf("<Memory Write Data forwarded from MEM/WB pipeline>\n");
     }
 }
 
@@ -707,20 +659,17 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
                     bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump) {
     memset(&hzrddetectSig, 0, sizeof(HAZARD_DETECTION_SIGNAL));
     if (IDEXMemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
-        printf("<<Load-use hazard detected. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
     }
     if (IDEXRegWrite && (BEQ | BNE | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
-        printf("<<Register Read data hazard detected from IDEX. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.BTBnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
     }
     if (EXMEMMemRead && (BEQ | BNE | Jump) && ((EXMEMWritereg == IFIDrs) || (EXMEMWritereg == IFIDrt))) {
-        printf("<<Register Read data hazard detected from EXMEM. Adding nop.>>\n");
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.BTBnotWrite = 1;
@@ -734,55 +683,42 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
 char Rformat(uint8_t funct) {  // select ALU operation by funct (R-format)
     switch (funct) {
         case 0x20 :  // add
-            printf ("name : add\n");
             return '+';
 
         case 0x21 :  // addu
-            printf("name : addu\n");
             return '+';
 
         case 0x24 :  // and
-            printf("name : and\n");
             return '&';
 
         case 0x08 :  // jr
-            printf("name : jr\n");
             return '+';
         
         case 0x9 :  // jalr
-            printf("name : jalr\n");
             return '+';
 
         case 0x27 :  // nor
-            printf("name : nor\n");
             return '~';
 
         case 0x25 :  // or
-            printf("name : or\n");
             return '|';
 
         case 0x2a :  // slt
-            printf("name : slt\n");
             return '<';
 
         case 0x2b :  // sltu
-            printf("name : sltu\n");
             return '>';
 
         case 0x00 :  // sll
-            printf("name : sll\n");
             return '{';
 
         case 0x02 :  // srl
-            printf("name : srl\n");
             return '}';
 
         case 0x22 :  // sub
-            printf("name : sub\n");
             return '-';
 
         case 0x23 :  // subu
-            printf("name : subu\n");
             return '-';
 
         default:

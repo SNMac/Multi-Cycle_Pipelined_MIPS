@@ -41,39 +41,30 @@ extern DEBUGMEM debugmem[2];
 extern DEBUGWB debugwb[2];
 
 /*============================Stages============================*/
-// TODO
-//  polishing printfs
 
 // Instruction Fetch
 void IF(void) {
-    debugif.IFPC = PC.PC;
-    printf("\n<<<<<<<<<<<<<<<<<<<<<IF>>>>>>>>>>>>>>>>>>>>>\n");
+    debugif.IFPC = PC.PC; debugid[0].valid = PC.valid;
     if (PC.PC == 0xffffffff) {
         ifid[0].valid = 0;
         PC.valid = 0;
-        debugid[0].valid = PC.valid;
-        printf("End of program\n");
-        printf("Wait for finishing other stage\n");
-        printf("**********************************************\n");
         return;
     }
 
     // Fetch instruction
     uint32_t instruction = InstMem(PC.PC);
 
-    // Print information of IF
-    printf("PC : 0x%08x\n", PC.PC);
-    printf("Fetch instruction : 0x%08x\n", instruction);
-
     // Check if PC is branch instruction
     CheckBranch(PC.PC);
+    debugif.Predict = BranchPred.Predict[1];
 
     // Save data to pipeline
     ifid[0].instruction = instruction; ifid[0].PCadd4 = PC.PC + 4;
-    printf("**********************************************\n");
 
     // For visible state
     debugif.IFinst = instruction;
+    debugif.Predict = BranchPred.Predict[0];
+    debugif.AddressHit = BranchPred.AddressHit[0];
     return;
 }
 
@@ -81,7 +72,7 @@ void IF(void) {
 void ID(void) {
     idex[0].valid = ifid[1].valid;
     debugex[0].valid = ifid[1].valid;
-    printf("\n<<<<<<<<<<<<<<<<<<<<<ID>>>>>>>>>>>>>>>>>>>>>\n");
+
 
     // Decode instruction
     INSTRUCTION inst;
@@ -128,6 +119,7 @@ void ID(void) {
     uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
 
     // Update branch result to BTB
+    debugid[1].PB = BranchPred.BTB[BranchPred.BTBindex[1]][2];
     UpdateBranchBuffer(Branch, PCBranch, BranchAddr);
 
     // Select PC address
@@ -143,19 +135,8 @@ void ID(void) {
     }
 
     if (!(ifid[1].valid)) {  // Pipeline is invalid
-        printf("IF/ID pipeline is invalid\n");
-        printf("**********************************************\n");
         return;
     }
-
-    printf("Processing PC : 0x%08x\n", debugid[1].IDPC);
-
-    // Print information of ID
-    printf("Decode instruction : 0x%08x\n", ifid[1].instruction);
-    printf("opcode : 0x%x\n", inst.opcode);
-    printf("rs : %u, rt : %u, rd : %u,\n", inst.rs, inst.rt, inst.rd);
-    printf("imm : 0x%08x (%u), address : 0x%08x\n", inst.imm, inst.imm, inst.address);
-    printf("shamt : 0x%x, funct : 0x%x\n", inst.shamt, inst.funct);
 
     // Save data to pipeline
     idex[0].PCadd8 = ifid[1].PCadd4 + 4;
@@ -176,17 +157,11 @@ void ID(void) {
         ifid[0].instruction = 0;
     }
 
-    if (!hzrddetectSig.BTBnotWrite) {
-        BranchPred.Predict[1] = BranchPred.Predict[0];
-        BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
-        BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
-        BranchPred.instPC[1] = BranchPred.instPC[0];
-    }
-
-    printf("**********************************************\n");
-
     // For visible state
     debugid[1].inst = inst;
+    debugid[1].Branch = Branch; debugid[1].PCBranch = PCBranch;
+    debugid[1].Predict = BranchPred.Predict[1];
+    debugid[1].AddressHit = BranchPred.AddressHit[1];
     return;
 }
 
@@ -194,15 +169,9 @@ void ID(void) {
 void EX(void) {
     exmem[0].valid = idex[1].valid;
     debugmem[0].valid = idex[1].valid;
-    printf("\n<<<<<<<<<<<<<<<<<<<<<EX>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(idex[1].valid)) {
-        printf("ID/EX pipeline is invalid\n");
-        printf("**********************************************\n");
         return;
     }
-
-    printf("Processing PC : 0x%08x\n", debugex[1].EXPC);
-    printf("Processing instruction : 0x%08x\n", debugex[1].EXinst);
 
     // Set ALU operation
     ALUCtrlUnit(idex[1].funct, idex[1].ALUOp);
@@ -223,10 +192,6 @@ void EX(void) {
     // Select write register
     uint8_t Writereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
 
-    // Print information of EX
-    printf("ALU input1 : 0x%08x (%u)\nALU input2 : 0x%08x (%u)\n", ALUinput1, ALUinput1, ALUinput2, ALUinput2);
-    printf("ALU result : 0x%08x (%u)\n", ALUresult, ALUresult);
-
     // Save data to pipeline
     exmem[0].PCadd8 = idex[1].PCadd8; exmem[0].upperimm = idex[1].upperimm;
     exmem[0].ForwardBMUX = ForwardBMUX; exmem[0].ALUresult = ALUresult;
@@ -236,8 +201,6 @@ void EX(void) {
     exmem[0].MemWrite = idex[1].MemWrite; exmem[0].MemRead = idex[1].MemRead;
     exmem[0].MemtoReg[0] = idex[1].MemtoReg[0]; exmem[0].MemtoReg[1] = idex[1].MemtoReg[1];
     exmem[0].RegWrite = idex[1].RegWrite;
-
-    printf("**********************************************\n");
 
     // For visible state
     debugex[1].ALUinput1 = ALUinput1; debugex[1].ALUinput2 = ALUinput2;
@@ -249,15 +212,9 @@ void EX(void) {
 void MEM(void) {
     memwb[0].valid = exmem[1].valid;
     debugwb[0].valid = exmem[1].valid;
-    printf("\n<<<<<<<<<<<<<<<<<<<<<MEM>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(exmem[1].valid)) {
-        printf("EX/MEM pipeline is invalid\n");
-        printf("**********************************************\n");
         return;
     }
-
-    printf("Processing PC : 0x%08x\n", debugmem[1].MEMPC);
-    printf("Processing instruction : 0x%08x\n", debugmem[1].MEMinst);
 
     MEMForwardUnit(exmem[1].rt, memwb[1].Writereg, exmem[1].MemWrite, memwb[1].RegWrite);
     uint32_t MemWriteDataMUX = MUX(exmem[1].ForwardBMUX, MemtoRegMUX, memfwrdSig.MEMForward);
@@ -274,8 +231,6 @@ void MEM(void) {
     memwb[0].MemtoReg[0] = exmem[1].MemtoReg[0]; memwb[0].MemtoReg[1] = exmem[1].MemtoReg[1];
     memwb[0].RegWrite = exmem[1].RegWrite;
 
-    printf("**********************************************\n");
-
     // For visible state
     debugmem[1].MemRead = exmem[1].MemRead; debugmem[1].MemWrite = exmem[1].MemWrite;
     debugmem[1].Addr = exmem[1].ALUresult; debugmem[1].Writedata = MemWriteDataMUX;
@@ -284,24 +239,9 @@ void MEM(void) {
 
 // Write Back
 void WB(void) {
-    printf("\n<<<<<<<<<<<<<<<<<<<<<WB>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(memwb[1].valid)) {
-        printf("MEM/WB pipeline is invalid\n");
-        printf("**********************************************\n");
         return;
     }
-
-    printf("Processing PC : 0x%08x\n", debugwb[1].WBPC);
-    printf("Processing instruction : 0x%08x\n", debugwb[1].WBinst);
-
-    if (memwb[1].RegWrite) {
-        printf("R[%d] = 0x%x (%d)\n", memwb[1].Writereg, R[memwb[1].Writereg], R[memwb[1].Writereg]);
-    }
-    else {
-        printf("There is no register write\n");
-    }
-
-    printf("**********************************************\n");
 
     // For visible state
     debugwb[1].RegWrite = memwb[1].RegWrite; debugwb[1].Writereg = memwb[1].Writereg;

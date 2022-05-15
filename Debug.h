@@ -14,6 +14,7 @@
 typedef struct _DEBUGIF {
     uint32_t IFPC;
     uint32_t IFinst;
+    bool Predict, AddressHit;
 }DEBUGIF;
 
 typedef struct _DEBUGID {
@@ -21,6 +22,9 @@ typedef struct _DEBUGID {
     uint32_t IDPC;
     uint32_t IDinst;
     INSTRUCTION inst;
+    bool Branch, PCBranch;
+    bool Predict, AddressHit;
+    uint8_t PB;
     char instprint[100];
 }DEBUGID;
 
@@ -62,7 +66,12 @@ void printID(void);
 void printEX(void);
 void printMEM(void);
 void printWB(void);
-void printRformat(uint8_t funct);
+void printRformat(void);
+void printIDforward(void);
+void printEXforward(void);
+void printUpdateBTB(void);
+void printPBtaken(void);
+void printPBnottaken(void);
 void DebugPipelineHandsOver(void);
 
 #endif //CAMP_PROJECT3_DEBUG_H

@@ -24,6 +24,9 @@ extern IDEX idex[2];
 extern EXMEM exmem[2];
 extern MEMWB memwb[2];
 extern BRANCH_PREDICT BranchPred;
+extern FORWARD_SIGNAL fwrdSig;
+extern ID_FORWARD_SIGNAL idfwrdSig;
+extern MEM_FORWARD_SIGNAL memfwrdSig;
 extern HAZARD_DETECTION_SIGNAL hzrddetectSig;
 
 void printIF(void) {
@@ -39,7 +42,15 @@ void printIF(void) {
     printf("PC : 0x%08x\n", debugif.IFPC);
     printf("Fetch instruction : 0x%08x\n", debugif.IFinst);
 
-
+    if (debugif.AddressHit == 0) {
+        printf("<BTB hasn't PC value.>\n");
+    }
+    else if (debugif.AddressHit == 1 && debugif.Predict == 1) {
+        printf("<BTB has PC value. Predict that branch is taken.>\n");
+    }
+    else {
+        printf("<BTB has PC value. Predict that branch is not taken.>\n");
+    }
 
     printf("**********************************************\n");
 
@@ -58,11 +69,11 @@ void printID(void) {
 
     // Print information of ID
     printf("Processing PC : 0x%08x\n", debugid[1].IDPC);
-    printf("Decode instruction : 0x%08x\n", debugid[1].IDinst);
+    printf("Processing instruction : 0x%08x\n", debugid[1].IDinst);
     memset(debugid[1].instprint, 0, sizeof(debugid[1].instprint));
     switch (debugid[1].inst.opcode) {
         case 0x0 :  // R-format
-            printRformat(debugid[1].inst.funct);
+            printRformat();
             break;
 
         case 0x8 :  // addi
@@ -134,7 +145,17 @@ void printID(void) {
             break;
     }
     printf("%s\n", debugid[1].instprint);
+
+    if (hzrddetectSig.ControlNOP) {
+        printf("!!Hazard detected. Adding NOP.!!\n");
+    }
+    else {
+        printUpdateBTB();
+        printIDforward();
+    }
+
     printf("**********************************************\n");
+
     // Hands over data to next debug stage
     debugex[0].ControlNOP = hzrddetectSig.ControlNOP;
     debugex[0].EXPC = debugid[1].IDPC; debugex[0].EXinst = debugid[1].IDinst;
@@ -143,6 +164,8 @@ void printID(void) {
 }
 
 void printEX(void) {
+    debugmem[0].ControlNOP = debugex[1].ControlNOP;
+
     printf("\n<<<<<<<<<<<<<<<<<<<<<EX>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(debugex[1].valid)) {
         printf("ID/EX pipeline is invalid\n");
@@ -160,19 +183,21 @@ void printEX(void) {
     }
     printf("%s\n", debugex[1].instprint);
 
+    printEXforward();
+
     printf("ALU input1 : 0x%08x (%u)\nALU input2 : 0x%08x (%u)\n",
            debugex[1].ALUinput1, debugex[1].ALUinput1, debugex[1].ALUinput2, debugex[1].ALUinput2);
     printf("ALU result : 0x%08x (%u)\n", debugex[1].ALUresult, debugex[1].ALUresult);
     printf("**********************************************\n");
 
     // Hands over data to next debug stage
-    debugmem[0].ControlNOP = debugex[1].ControlNOP;
     debugmem[0].MEMPC = debugex[1].EXPC; debugmem[0].MEMinst = debugex[1].EXinst;
     strcpy(debugmem[0].instprint, debugex[1].instprint);
     return;
 }
 
 void printMEM(void) {
+    debugwb[0].ControlNOP = debugmem[1].ControlNOP;
     printf("\n<<<<<<<<<<<<<<<<<<<<<MEM>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(debugmem[1].valid)) {
         printf("EX/MEM pipeline is invalid\n");
@@ -190,6 +215,10 @@ void printMEM(void) {
     }
     printf("%s\n", debugmem[1].instprint);
 
+    if (memfwrdSig.MEMForward) {
+        printf("<Memory Write Data forwarded from MEM/WB pipeline>\n");
+    }
+
     if (debugmem[1].MemRead) {
         printf("Memory[0x%08x] load -> 0x%x (%d)\n", debugmem[1].Addr, debugmem[1].Writedata, debugmem[1].Writedata);
     }
@@ -202,7 +231,6 @@ void printMEM(void) {
     printf("**********************************************\n");
 
     // Hands over data to next debug stage
-    debugwb[0].ControlNOP = debugmem[1].ControlNOP;
     debugwb[0].WBPC = debugmem[1].MEMPC; debugwb[0].WBinst = debugmem[1].MEMinst;
     strcpy(debugwb[0].instprint, debugmem[1].instprint);
     return;
@@ -238,8 +266,8 @@ void printWB(void) {
 
 
 
-void printRformat(uint8_t funct) {
-    switch (funct) {
+void printRformat(void) {
+    switch (debugid[1].inst.funct) {
         case 0x20 :  // add
             snprintf(debugid[1].instprint, sizeof(debugid[1].instprint),
                      "format : R   |   add $%d, $%d, $%d", debugid[1].inst.rd, debugid[1].inst.rs, debugid[1].inst.rt);
@@ -312,16 +340,117 @@ void printRformat(uint8_t funct) {
     return;
 }
 
+void printIDforward(void) {
+    if (idfwrdSig.IDForwardA[1] == 1 && idfwrdSig.IDForwardA[0] == 1) {
+        printf("<Register Read data1 forwarded from ID/EX pipeline>\n");
+    }
+    else if (idfwrdSig.IDForwardA[1] == 1 && idfwrdSig.IDForwardA[0] == 0) {
+        printf("<Register Read data1 forwarded from EX/MEM pipeline>\n");
+    }
+    else if (idfwrdSig.IDForwardA[1] == 0 && idfwrdSig.IDForwardA[0] == 1) {
+        printf("<Register Read data1 forwarded from MEM/WB pipeline>\n");
+    }
+
+    if (idfwrdSig.IDForwardB[1] == 1 && idfwrdSig.IDForwardB[0] == 1) {
+        printf("<Register Read data2 forwarded from ID/EX pipeline>\n");
+    }
+    else if (idfwrdSig.IDForwardB[1] == 1 && idfwrdSig.IDForwardB[0] == 0) {
+        printf("<Register Read data2 forwarded from EX/MEM pipeline>\n");
+    }
+    else if (idfwrdSig.IDForwardB[1] == 0 && idfwrdSig.IDForwardB[0] == 1) {
+        printf("<Register Read data2 forwarded from MEM/WB pipeline>\n");
+    }
+    return;
+}
+
+void printEXforward(void) {
+    if (fwrdSig.ForwardA[1] == 1 && fwrdSig.ForwardA[0] == 0) {
+        if (fwrdSig.EXMEMupperimmA) {
+            printf("<ALU input1 forwarded from EX/MEM pipeline upperimm>\n");
+            return;
+        }
+        printf("<ALU input1 forwarded from EX/MEM pipeline>\n");
+    }
+    else if (fwrdSig.ForwardA[1] == 0 && fwrdSig.ForwardA[0] == 1) {
+        printf("<ALU input1 forwarded from MEM/WB pipeline>\n");
+    }
+
+    if (fwrdSig.ForwardB[1] == 1 && fwrdSig.ForwardB[0] == 0) {
+        if (fwrdSig.EXMEMupperimmB) {
+            printf("<ALU input2 forwarded from EX/MEM pipeline upperimm>\n");
+            return;
+        }
+        printf("<ALU input2 forwarded from EX/MEM pipeline>\n");
+    }
+    else if (fwrdSig.ForwardB[1] == 0 && fwrdSig.ForwardB[0] == 1) {
+        printf("<ALU input2 forwarded from MEM/WB pipeline>\n");
+    }
+    return;
+}
+
+void printUpdateBTB(void) {
+    if (debugid[1].Branch) {
+        if (debugid[1].AddressHit) {
+            if (debugid[1].PCBranch) {
+                printf("Branch taken, ");
+                if (debugid[1].Predict) {
+                    printf("predicted branch taken.\nBranch prediction HIT.\n");
+                }
+                else {
+                    printf("predicted branch not taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
+                }
+                printPBtaken();
+            }
+
+            else {
+                printf("Branch not taken, ");
+                if (debugid[1].Predict) {
+                    printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
+                }
+                else {
+                    printf("predicted branch not taken.\nBranch prediction HIT.\n");
+                }
+                printPBnottaken();
+            }
+        }
+
+        else {
+            printf("## Write PC to BTB ##\n");
+            if (debugid[1].PCBranch) {
+                printPBtaken();
+                printf("Instruction is branch. FLushing IF instruction.\n");
+            }
+        }
+    }
+    return;
+}
+
+void printPBtaken(void) {
+    if (debugid[1].PB == 1 || debugid[1].PB == 2 || debugid[1].PB == 3) {
+        printf("<Update PB to 3>\n");
+    }
+    else if (debugid[1].PB == 0) {
+        printf("<Update PB to 1>\n");
+    }
+    return;
+}
+
+void printPBnottaken(void) {
+    if (debugid[1].PB == 0 || debugid[1].PB == 1 || debugid[1].PB == 2) {
+        printf("<Update PB to 0>\n");
+    }
+    else if (debugid[1].PB == 3) {
+        printf("<Update PB to 2>\n");
+    }
+    return;
+}
+
 void DebugPipelineHandsOver(void) {
     if (!hzrddetectSig.IFIDnotWrite){
         debugid[1] = debugid[0];
-        strcpy(debugid[1].instprint, debugid[0].instprint);
     }
     debugex[1] = debugex[0];
-    strcpy(debugex[1].instprint, debugex[0].instprint);
     debugmem[1] = debugmem[0];
-    strcpy(debugmem[1].instprint, debugmem[0].instprint);
     debugwb[1] = debugwb[0];
-    strcpy(debugwb[1].instprint, debugwb[0].instprint);
     return;
 }
