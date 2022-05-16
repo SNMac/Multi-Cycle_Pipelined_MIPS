@@ -21,6 +21,8 @@ char PredSelector(void);
 char PBSelector(void);
 void OnelevelPredict(const char* Predictbit);
 void GsharePredict(const char* Predictbit);
+void AlwaysTaken(void);
+void AlwaysnotTaken(void);
 void Firstinit(const char* Predictbit);
 void printnextPC(void);
 void OnelevelPipelineHandsOver(void);

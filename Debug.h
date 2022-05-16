@@ -61,7 +61,7 @@ typedef struct _DEBUGWB {
     char instprint[100];
 }DEBUGWB;
 
-void printIF(void);
+void printIF(int Predictor);
 void printID(int Predictor, const char* Predictbit);
 void printEX(void);
 void printMEM(void);

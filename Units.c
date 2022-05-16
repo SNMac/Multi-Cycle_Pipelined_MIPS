@@ -471,6 +471,20 @@ void GsharePBnottaken(uint8_t Predbit, const char* Predictbit) {
     return;
 }
 
+void BranchAlways(bool Branch, bool PCBranch) {
+    if (Branch) {  // beq, bne
+        if (PCBranch) {  // Branch taken
+            counting.takenBranch++;
+            ctrlSig.IFFlush = 1;
+        }
+        else {  // Branch not taken, HIT
+            counting.PredictHitCount++;
+            counting.nottakenBranch++;
+        }
+    }
+}
+
+
 // [ALU]
 uint32_t ALU(uint32_t input1, uint32_t input2, char ALUSig) {
     uint32_t ALUresult = 0;
