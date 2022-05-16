@@ -34,9 +34,10 @@ extern DEBUGWB debugwb[2];
 
 int main(int argc, char* argv[]) {
     clock_t start = clock();
+    char* filename;
+    int filenameSelector;
     char PredictorSelector;
     char PredictionBitSelector = '0';
-    char* filename;
     if (argc == 2) {
         filename = argv[1];
         PredictorSelector = PredSelector();
@@ -64,14 +65,51 @@ int main(int argc, char* argv[]) {
     // TODO
     //  make BTFNT predictor
     else {
-        filename = malloc(sizeof(char) * 20);
-        printf("#################################################\n");
-        printf("simple.bin  simple2.bin  simple3.bin  simple4.bin\n");
-        printf("fib.bin  fib_jalr.bin  gcd.bin  input4.bin\n");
-        printf("#################################################\n");
-        printf("\nInput filename : \n");
-        scanf("%s", filename);
+        printf("###################################################\n");
+        printf("1 : simple.bin,  2 : simple2.bin,  3 : simple3.bin\n");
+        printf("4 : simple4.bin, 5 : fib.bin,      6 : fib_jalr.bin\n");
+        printf("7 : gcd.bin,     8 : input4.bin\n");
+        printf("###################################################\n");
+        printf("\nSelect filename : \n");
+        scanf("%d", &filenameSelector);
         getchar();
+        switch (filenameSelector) {
+            case 1 :
+                filename = "simple.bin";
+                break;
+
+            case 2 :
+                filename = "simple2.bin";
+                break;
+
+            case 3 :
+                filename = "simple3.bin";
+                break;
+
+            case 4 :
+                filename = "simple4.bin";
+                break;
+
+            case 5 :
+                filename = "fib.bin";
+                break;
+
+            case 6 :
+                filename = "fib_jalr.bin";
+                break;
+
+            case 7 :
+                filename = "gcd.bin";
+                break;
+
+            case 8 :
+                filename = "input4.bin";
+                break;
+
+            default :
+                fprintf(stderr, "ERROR: Wrong filename select number\n");
+                break;
+        }
         PredictorSelector = PredSelector();
         if (PredictorSelector == '1' || PredictorSelector == '2') {
             PredictionBitSelector = PBSelector();
@@ -128,7 +166,6 @@ int main(int argc, char* argv[]) {
 
     END:
     printFinalresult(&PredictorSelector, &PredictionBitSelector);
-    free(filename);
     fclose(fp);
     clock_t end = clock();
     printf("Execution time : %lf\n", (double)(end - start) / CLOCKS_PER_SEC);
