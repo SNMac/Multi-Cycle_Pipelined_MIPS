@@ -41,20 +41,21 @@ extern DEBUGWB debugwb[2];
 
 /*============================Stages============================*/
 
-// Instruction Fetch
-void IF(void) {
+// Instruction Fetch (One Level Predictor)
+void OnelevelIF(const char* Predictbit) {
     debugif.IFPC = PC.PC; debugid[0].valid = PC.valid;
     if (PC.PC == 0xffffffff) {
         ifid[0].valid = 0;
         PC.valid = 0;
         return;
     }
-
+// TODO
+//  make XOR
     // Fetch instruction
     uint32_t instruction = InstMem(PC.PC);
 
     // Check if PC is branch instruction
-    CheckBranch(PC.PC);
+    CheckBranch(PC.PC, Predictbit);
     debugif.Predict = BranchPred.Predict[1];
 
     // Save data to pipeline
@@ -67,8 +68,36 @@ void IF(void) {
     return;
 }
 
-// Instruction Decode
-void ID(void) {
+// Instruction Fetch (Gshare Predictor)
+void GshareIF(const char* Predictbit) {
+    debugif.IFPC = PC.PC; debugid[0].valid = PC.valid;
+    if (PC.PC == 0xffffffff) {
+        ifid[0].valid = 0;
+        PC.valid = 0;
+        return;
+    }
+
+
+    // Fetch instruction
+    uint32_t instruction = InstMem(PC.PC);
+
+    // Check if PC is branch instruction
+    BranchPred.IFBHTindex = makeGHRindex(BranchPred.GHR, PC.PC);
+    GshareCheckBranch(PC.PC, Predictbit);
+    debugif.Predict = BranchPred.Predict[1];
+
+    // Save data to pipeline
+    ifid[0].instruction = instruction; ifid[0].PCadd4 = PC.PC + 4;
+
+    // For visible state
+    debugif.IFinst = instruction;
+    debugif.Predict = BranchPred.Predict[0];
+    debugif.AddressHit = BranchPred.AddressHit[0];
+    return;
+}
+
+// Instruction Decode (One Level Predictor)
+void OnelevelID(const char* Predictbit) {
     idex[0].valid = ifid[1].valid;
     debugex[0].valid = ifid[1].valid;
 
@@ -98,9 +127,11 @@ void ID(void) {
 
     // Check branch forwarding
     IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
-                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite);
-    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrs, idfwrdSig.IDForwardA);
-    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,exmem[1].ALUresult, idex[1].Rrt, idfwrdSig.IDForwardB);
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+    uint32_t IDForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
+    uint32_t IDForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].Rrs, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].Rrt, idfwrdSig.IDForwardB);
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
@@ -118,7 +149,106 @@ void ID(void) {
 
     // Update branch result to BTB
     debugid[1].PB = BranchPred.DP[BranchPred.DPindex[1]][1];
-    UpdateBranchBuffer(Branch, PCBranch, BranchAddr);
+    UpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit);
+
+    // Select PC address
+    bool PCtarget = BranchPred.AddressHit[0] & BranchPred.Predict[0];
+    bool BranchHit = !(BranchPred.Predict[1] ^ PCBranch);
+    bool IDBrPC = !BranchPred.Predict[1] & PCBranch;
+    uint32_t IFIDPCMUX = MUX(ifid[1].PCadd4, PC.PC + 4, BranchHit);
+    uint32_t PCBranchMUX = MUX(IFIDPCMUX, BranchAddr, IDBrPC);
+    uint32_t JumpMUX = MUX_3(PCBranchMUX, JumpAddr, IDForwardAMUX, ctrlSig.Jump);
+    uint32_t PredictMUX = MUX(JumpMUX, BranchPred.BTB[BranchPred.BTBindex[0]][1], PCtarget);
+    if (PC.valid & !(hzrddetectSig.PCnotWrite)) {  // PC write disabled
+        PC.PC = PredictMUX;
+    }
+
+    if (!(ifid[1].valid)) {  // Pipeline is invalid
+        return;
+    }
+
+    // Save data to pipeline
+    idex[0].PCadd8 = ifid[1].PCadd4 + 4;
+    idex[0].Rrs = Regs_return[0]; idex[0].Rrt = Regs_return[1];
+    idex[0].extimm = extimm; idex[0].upperimm = zeroimm << 16;
+    idex[0].funct = inst.funct; idex[0].shamt = inst.shamt;
+    idex[0].rs = inst.rs; idex[0].rt = inst.rt; idex[0].rd = inst.rd;
+
+    // Save control signals to pipeline
+    idex[0].Shift = ctrlSig.Shift; idex[0].ALUSrc = ctrlSig.ALUSrc;
+    idex[0].RegDst[0] = ctrlSig.RegDst[0]; idex[0].RegDst[1] = ctrlSig.RegDst[1];
+    idex[0].MemWrite = ctrlSig.MemWrite; idex[0].MemRead = ctrlSig.MemRead;
+    idex[0].MemtoReg[0] = ctrlSig.MemtoReg[0]; idex[0].MemtoReg[1] = ctrlSig.MemtoReg[1];
+    idex[0].RegWrite = ctrlSig.RegWrite; idex[0].ALUOp = ctrlSig.ALUOp;
+
+    // Flushing IF instruction
+    if (ctrlSig.IFFlush) {
+        ifid[0].instruction = 0;
+    }
+
+    // For visible state
+    debugid[1].inst = inst;
+    debugid[1].Branch = Branch; debugid[1].PCBranch = PCBranch;
+    debugid[1].Predict = BranchPred.Predict[1];
+    debugid[1].AddressHit = BranchPred.AddressHit[1];
+    return;
+}
+
+// Instruction Fetch (Gshare Predictor)
+void GshareID(const char* Predictbit) {
+    idex[0].valid = ifid[1].valid;
+    debugex[0].valid = ifid[1].valid;
+
+    // Decode instruction
+    INSTRUCTION inst;
+    InstDecoder(&inst, ifid[1].instruction);
+
+    // Set control signals
+    CtrlUnit(inst.opcode, inst.funct);
+
+    // Load-use, branch hazard detect
+    uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
+    HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
+                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+    if (hzrddetectSig.ControlNOP) {  // adding nop
+        memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+    }
+
+    // Avoid ID-WB hazard
+    if(memwb[1].valid) {
+        MemtoRegMUX = MUX_4(memwb[1].ALUresult, memwb[1].Readdata, memwb[1].PCadd8, memwb[1].upperimm, memwb[1].MemtoReg);
+        RegsWrite(memwb[1].Writereg, MemtoRegMUX, memwb[1].RegWrite);
+    }
+
+    // Register fetch
+    uint32_t* Regs_return = RegsRead(inst.rs, inst.rt);
+
+    // Check branch forwarding
+    IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+    uint32_t IDForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
+    uint32_t IDForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].Rrs, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].Rrt, idfwrdSig.IDForwardB);
+
+    // Comparate two operands
+    bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
+    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
+    bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
+
+    // Extending immediate
+    int32_t signimm = (int16_t) inst.imm;
+    uint32_t zeroimm = (uint16_t) inst.imm;
+    uint32_t extimm = MUX(signimm, zeroimm, ctrlSig.SignZero);
+
+    // Address calculate
+    uint32_t BranchAddr = ifid[1].PCadd4 + (signimm << 2);
+    uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
+
+    // Update branch result to BTB
+    debugid[1].PB = BranchPred.BHT[BranchPred.BHTindex[1]][1];
+    GshareUpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit);
+
 
     // Select PC address
     bool PCtarget = BranchPred.AddressHit[0] & BranchPred.Predict[0];
@@ -244,4 +374,10 @@ void WB(void) {
     // For visible state
     debugwb[1].RegWrite = memwb[1].RegWrite; debugwb[1].Writereg = memwb[1].Writereg;
     return;
+}
+
+uint8_t makeGHRindex(const bool GHR[], uint32_t PCvalue) {
+    uint8_t poweredGHR = 8 * GHR[3] + 4 * GHR[2] + 2 * GHR[1] + GHR[0];
+    uint8_t XORPC = (PCvalue >> 2) & 0x0000000f;
+    return poweredGHR ^ XORPC;
 }

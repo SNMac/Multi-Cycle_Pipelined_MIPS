@@ -17,10 +17,15 @@ typedef struct _COUNTING {
     int nottakenBranch;  // not taken Branch count
 }COUNTING;
 
-void Firstinit(void);
+char PredSelector(void);
+char PBSelector(void);
+void OnelevelPredict(const char* Predictbit);
+void GsharePredict(const char* Predictbit);
+void Firstinit(const char* Predictbit);
 void printnextPC(void);
-void PipelineHandsOver(void);
+void OnelevelPipelineHandsOver(void);
+void GsharePipelineHandsOver(void);
 void countingFormat(void);
-void printFinalresult(void);
+void printFinalresult(const char* Predictor);
 
 #endif //CAMP_PROJECT3_MAIN_H

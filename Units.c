@@ -90,14 +90,19 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite)
     return Readdata;
 }
 
-// [Branch predictor]
-void CheckBranch(uint32_t PCvalue) {  // Check if PC is branch instruction
+// [One-level branch predictor]
+void CheckBranch(uint32_t PCvalue, const char* Predictbit) {  // Check if PC is branch instruction
     BranchPred.instPC[0] = PCvalue;
-    if (BranchPred.BTBsize == 0) {  // BTB is empty
+    if (BranchPred.BTBsize == 0 && BranchPred.DPsize == 0) {  // BTB, DP is empty
         BranchPred.AddressHit[0] = 0;  // Branch not predicted
         BranchPred.Predict[0] = 0;  // Predict branch not taken
         return;
     }
+    else if (BranchPred.BTBsize != BranchPred.DPsize) {
+        fprintf(stderr, "ERROR: Branch predictor is wrong\n");
+        exit(EXIT_FAILURE);
+    }
+
     // Find PC in BTB
     for (BranchPred.BTBindex[0] = 0; BranchPred.BTBindex[0] < BTBMAX; BranchPred.BTBindex[0]++) {
         if (BranchPred.BTB[BranchPred.BTBindex[0]][0] == PCvalue) {  // PC found in BTB
@@ -106,34 +111,53 @@ void CheckBranch(uint32_t PCvalue) {  // Check if PC is branch instruction
             break;  // Send out predicted PC
         }
     }
-    // Find PC in DP
-    for (BranchPred.DPindex[0] = 0; BranchPred.DPindex[0] < BTBMAX; BranchPred.DPindex[0]++) {
-        if (BranchPred.DP[BranchPred.DPindex[0]][0] == PCvalue) {
-            // PC found in BTB
-            if (BranchPred.DP[BranchPred.DPindex[0]][1] == 2 || BranchPred.DP[BranchPred.DPindex[0]][1] == 3)  {
-                BranchPred.Predict[0] = 1;  // Predict branch taken
-            }
-            else {
-                BranchPred.Predict[0] = 0;  // Predict branch not taken
-            }
-            BranchPred.DP[BranchPred.DPindex[0]][2]++;
-            return;
-        }
-    }
+
     // PC not found in BTB
     if (BranchPred.BTBindex[0] == BTBMAX && BranchPred.DPindex[0] == BTBMAX) {
         BranchPred.AddressHit[0] = 0;  // Branch not predicted
         BranchPred.Predict[0] = 0;  // Predict branch not taken
         return;
     }
+
+    // Find PC in DP
+    for (BranchPred.DPindex[0] = 0; BranchPred.DPindex[0] < BTBMAX; BranchPred.DPindex[0]++) {
+        if (BranchPred.DP[BranchPred.DPindex[0]][0] == PCvalue) {
+            // PC found in BTB
+            switch (*Predictbit) {
+                case '1' :  // One-bit predictor
+                    if (BranchPred.DP[BranchPred.DPindex[0]][1] == 1)  {
+                        BranchPred.Predict[0] = 1;  // Predict branch taken
+                    }
+                    else {
+                        BranchPred.Predict[0] = 0;  // Predict branch not taken
+                    }
+                    break;
+
+                case '2' :  // Two-bit predictor
+                    if (BranchPred.DP[BranchPred.DPindex[0]][1] == 2 || BranchPred.DP[BranchPred.DPindex[0]][1] == 3)  {
+                        BranchPred.Predict[0] = 1;  // Predict branch taken
+                    }
+                    else {
+                        BranchPred.Predict[0] = 0;  // Predict branch not taken
+                    }
+                    break;
+
+                default :
+                    fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+                    exit(EXIT_FAILURE);
+            }
+            BranchPred.DP[BranchPred.DPindex[0]][2]++;
+            return;
+        }
+    }
     return;
 }
 
-void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
+void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit) {
     if (Branch) {  // beq, bne
         if (BranchPred.AddressHit[1]) {  // PC found in BTB
             if (PCBranch) {  // Branch taken
-                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1]);
+                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit);
                 counting.takenBranch++;
                 if (BranchPred.Predict[1]) {  // Predict branch taken, HIT
                     counting.PredictHitCount++;
@@ -144,7 +168,7 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
             }
 
             else {  // Branch not taken
-                PBnottaken(BranchPred.DP[BranchPred.DPindex[1]][1]);
+                PBnottaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit);
                 counting.nottakenBranch++;
                 if (BranchPred.Predict[1]) {  // Predict branch taken
                     ctrlSig.IFFlush = 1;
@@ -155,9 +179,9 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
             }
         }
         else {  // PC not found in BTB, Predicted PC + 4
-            BranchBufferWrite(BranchPred.instPC[1], BranchAddr);
+            BranchBufferWrite(BranchPred.instPC[1], BranchAddr, Predictbit);
             if (PCBranch) {  // Branch taken
-                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1]);
+                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit);
                 counting.takenBranch++;
                 ctrlSig.IFFlush = 1;
             }
@@ -168,7 +192,7 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr) {
     }
 }
 
-void BranchBufferWrite(uint32_t WritePC, uint32_t Address) {  // Write PC and BranchAddr to BTB
+void BranchBufferWrite(uint32_t WritePC, uint32_t Address, const char* Predictbit) {  // Write PC and BranchAddr to BTB
     if (BranchPred.BTBsize >= BTBMAX) {  // BTB has no space
         uint32_t BTBmin = BranchPred.BTB[0][2];
         int BTBminindex;
@@ -195,7 +219,13 @@ void BranchBufferWrite(uint32_t WritePC, uint32_t Address) {  // Write PC and Br
         }
         // Substitute low frequency used branch
         BranchPred.DP[DPminindex][0] = WritePC;
-        BranchPred.DP[DPminindex][1] = 1;
+
+        if (*Predictbit == '2') {  // Two-bit predictior
+            BranchPred.DP[DPminindex][1] = 0;
+        }
+        else {  // One-bit predictor
+            BranchPred.DP[DPminindex][1] = 1;
+        }
         BranchPred.DP[DPminindex][2] = 0;
         BranchPred.DPindex[1] = DPminindex;
         return;
@@ -210,30 +240,233 @@ void BranchBufferWrite(uint32_t WritePC, uint32_t Address) {  // Write PC and Br
     return;
 }
 
-void PBtaken(uint8_t Predbit) {  // Update prediction bits to taken
-    if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
-        BranchPred.DP[BranchPred.DPindex[1]][1] =  3;  // PB = 11
+void PBtaken(uint8_t Predbit, const char* Predictbit) {  // Update prediction bits to taken
+    switch (*Predictbit) {
+        case '1' :  // One-bit predictor
+            BranchPred.DP[BranchPred.DPindex[1]][1] =  1;  // PB = 1
+            break;
+
+        case '2' :  // Two-bit predictor
+            if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
+                BranchPred.DP[BranchPred.DPindex[1]][1] =  3;  // PB = 11
+            }
+            else if (Predbit == 0) {  // PB == 00
+                BranchPred.DP[BranchPred.DPindex[1]][1] = 1;  // PB = 01
+            }
+            else {
+                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
+
+        default :
+            fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+            exit(EXIT_FAILURE);
     }
-    else if (Predbit == 0) {  // PB == 00
-        BranchPred.DP[BranchPred.DPindex[1]][1] = 1;  // PB = 01
-    }
-    else {
-        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
-        exit(EXIT_FAILURE);
+    return;
+}
+void PBnottaken(uint8_t Predbit, const char* Predictbit) {  // Update prediction bits to not taken
+    switch (*Predictbit) {
+        case '1' :  // One-bit predictor
+            BranchPred.DP[BranchPred.DPindex[1]][1] =  0;  // PB = 0
+            break;
+
+        case '2' :  // Two-bit predictor
+            if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
+                BranchPred.DP[BranchPred.DPindex[1]][1] =  0;  // PB = 00
+            }
+            else if (Predbit == 3) {  // PB == 00
+                BranchPred.DP[BranchPred.DPindex[1]][1] = 2;  // PB = 10
+            }
+            else {
+                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
+
+        default :
+            fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+            exit(EXIT_FAILURE);
     }
     return;
 }
 
-void PBnottaken(uint8_t Predbit) {  // Update prediction bits to not taken
-    if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
-        BranchPred.DP[BranchPred.DPindex[1]][1] =  0;  // PB = 00
+// [Gshare branch predictor]
+void GshareCheckBranch(uint32_t PCvalue, const char* Predictbit) {
+    BranchPred.instPC[0] = PCvalue;
+    if (BranchPred.BTBsize == 0) {  // BTB is empty
+        BranchPred.AddressHit[0] = 0;  // Branch not predicted
+        BranchPred.Predict[0] = 0;  // Predict branch not taken
+        return;
     }
-    else if (Predbit == 3) {  // PB == 11
-        BranchPred.DP[BranchPred.DPindex[1]][1] =  2;  // PB = 10
+
+    // Find PC in BTB
+    for (BranchPred.BTBindex[0] = 0; BranchPred.BTBindex[0] < BTBMAX; BranchPred.BTBindex[0]++) {
+        if (BranchPred.BTB[BranchPred.BTBindex[0]][0] == PCvalue) {  // PC found in BTB
+            BranchPred.AddressHit[0] = 1;  // Branch predicted
+            BranchPred.BTB[BranchPred.BTBindex[0]][2]++;  // Frequency + 1
+            break;  // Send out predicted PC
+        }
     }
-    else {
-        fprintf(stderr, "ERROR: Prediction bit is wrong.\n");
-        exit(EXIT_FAILURE);
+
+    // PC not found in BTB
+    if (BranchPred.BTBindex[0] == BTBMAX) {
+        BranchPred.AddressHit[0] = 0;  // Branch not predicted
+        BranchPred.Predict[0] = 0;  // Predict branch not taken
+        return;
+    }
+
+    // Find GHR in BHT
+    for (BranchPred.BHTindex[0] = 0; BranchPred.BHTindex[0] < BHTMAX; BranchPred.BHTindex[0]++) {
+        if (BranchPred.BHT[BranchPred.BHTindex[0]][0] == BranchPred.IFBHTindex) {
+            // GHR found in BHT
+            switch (*Predictbit) {
+                case '1' :  // One-bit predictor
+                    if (BranchPred.BHT[BranchPred.BHTindex[0]][1] == 1)  {
+                        BranchPred.Predict[0] = 1;  // Predict branch taken
+                    }
+                    else {
+                        BranchPred.Predict[0] = 0;  // Predict branch not taken
+                    }
+                    break;
+
+                case '2' :  // Two-bit predictor
+                    if (BranchPred.BHT[BranchPred.BHTindex[0]][1] == 2 || BranchPred.BHT[BranchPred.BHTindex[0]][1] == 3)  {
+                        BranchPred.Predict[0] = 1;  // Predict branch taken
+                    }
+                    else {
+                        BranchPred.Predict[0] = 0;  // Predict branch not taken
+                    }
+                    break;
+
+                default :
+                    fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+                    exit(EXIT_FAILURE);
+            }
+            BranchPred.BHT[BranchPred.BHTindex[0]][2]++;
+            return;
+        }
+    }
+    return;
+}
+
+void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit) {
+    if (Branch) {  // beq, bne
+        BranchPred.GHR[3] = BranchPred.GHR[2];
+        BranchPred.GHR[2] = BranchPred.GHR[1];
+        BranchPred.GHR[1] = BranchPred.GHR[0];
+        if (BranchPred.AddressHit[1]) {  // PC found in BTB
+            if (PCBranch) {  // Branch taken
+                BranchPred.GHR[0] = 1;
+                GsharePBtaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit);
+                counting.takenBranch++;
+                if (BranchPred.Predict[1]) {  // Predict branch taken, HIT
+                    counting.PredictHitCount++;
+                }
+                else {  // Predict branch not taken
+                    ctrlSig.IFFlush = 1;
+                }
+            }
+
+            else {  // Branch not taken
+                BranchPred.GHR[0] = 0;
+                GsharePBnottaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit);
+                counting.nottakenBranch++;
+                if (BranchPred.Predict[1]) {  // Predict branch taken
+                    ctrlSig.IFFlush = 1;
+                }
+                else {  // Predict branch not taken, HIT
+                    counting.PredictHitCount++;
+                }
+            }
+        }
+        else {  // PC not found in BTB, Predicted PC + 4 (not taken)
+            GshareBranchBufferWrite(BranchPred.instPC[1], BranchAddr);
+            if (PCBranch) {  // Branch taken
+                BranchPred.GHR[0] = 1;
+                GsharePBtaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit);
+                counting.takenBranch++;
+                ctrlSig.IFFlush = 1;
+            }
+            else {  // Branch not taken, HIT
+                BranchPred.GHR[0] = 0;
+                counting.PredictHitCount++;
+                counting.nottakenBranch++;
+            }
+        }
+    }
+}
+
+void GshareBranchBufferWrite(uint32_t WritePC, uint32_t Address) {
+    if (BranchPred.BTBsize >= BTBMAX) {  // BTB has no space
+        uint32_t BTBmin = BranchPred.BTB[0][2];
+        int BTBminindex;
+        for (BranchPred.BTBindex[1] = 0; BranchPred.BTBindex[1] < BTBMAX; BranchPred.BTBindex[1]++) {
+            if (BTBmin > BranchPred.BTB[BranchPred.BTBindex[1]][2]) {
+                BTBmin = BranchPred.BTB[BranchPred.BTBindex[1]][2];
+                BTBminindex = BranchPred.BTBindex[1];
+            }
+        }
+        // Substitute low frequency used branch
+        BranchPred.BTB[BTBminindex][0] = WritePC;
+        BranchPred.BTB[BTBminindex][1] = Address;
+        BranchPred.BTB[BTBminindex][2] = 0;
+        BranchPred.BTBindex[1] = BTBminindex;
+    }
+    BranchPred.BTB[BranchPred.BTBsize][0] = WritePC;
+    BranchPred.BTB[BranchPred.BTBsize][1] = Address;
+    BranchPred.BTBindex[1] = BranchPred.BTBsize;
+    BranchPred.BTBsize++;
+    return;
+}
+
+void GsharePBtaken(uint8_t Predbit, const char* Predictbit) {
+    switch (*Predictbit) {
+        case '1' :  // One-bit predictor
+            BranchPred.BHT[BranchPred.BHTindex[1]][1] =  1;  // PB = 1
+            break;
+
+        case '2' :  // Two-bit predictor
+            if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
+                BranchPred.BHT[BranchPred.BHTindex[1]][1] =  3;  // PB = 11
+            }
+            else if (Predbit == 0) {  // PB == 00
+                BranchPred.BHT[BranchPred.BHTindex[1]][1] = 1;  // PB = 01
+            }
+            else {
+                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
+
+        default :
+            fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+            exit(EXIT_FAILURE);
+    }
+    return;
+}
+void GsharePBnottaken(uint8_t Predbit, const char* Predictbit) {
+    switch (*Predictbit) {
+        case '1' :  // One-bit predictor
+            BranchPred.BHT[BranchPred.BHTindex[1]][1] =  0;  // PB = 0
+            break;
+
+        case '2' :  // Two-bit predictor
+            if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
+                BranchPred.BHT[BranchPred.BHTindex[1]][1] = 0;  // PB = 00
+            }
+            else if (Predbit == 3) {  // PB == 00
+                BranchPred.BHT[BranchPred.BHTindex[1]][1] = 2;  // PB = 10
+            }
+            else {
+                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
+
+        default :
+            fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+            exit(EXIT_FAILURE);
     }
     return;
 }
@@ -567,7 +800,7 @@ void CtrlUnit(uint8_t opcode, uint8_t funct) {
 // (ALU control unit)
 void ALUCtrlUnit(uint8_t funct, char ALUOp) {
     memset(&ALUctrlSig, 0, sizeof(ALU_CONTROL_SIGNAL));
-    switch (ALUOp) {  // 0, +, &, B, |, <
+    switch (ALUOp) {  // 0, +, &, B, |, <, \0
         case '0' :  // select operation according to funct
             ALUctrlSig.ALUSig = Rformat(funct);
             return;
@@ -634,7 +867,7 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
 }
 
 void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
-                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite) {
+                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]) {
     memset(&idfwrdSig, 0, sizeof(ID_FORWARD_SIGNAL));
     // ID hazard
     if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs)) {
@@ -649,11 +882,17 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
         !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) ) &&
         (EXMEMWritereg == IFIDrs)) {
         idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[0] = 0;  // IDForwardA = 10
+        if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
+            idfwrdSig.EXMEMupperimmA = 1;
+        }
     }
     if (EXMEMRegWrite && (EXMEMWritereg != 0) &&
         !( IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) ) &&
         (EXMEMWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[0] = 0;  // IDForwardB = 10
+        if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
+            idfwrdSig.EXMEMupperimmB = 1;
+        }
     }
 
     // MEM hazard
@@ -683,11 +922,13 @@ void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, 
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
                     bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump) {
     memset(&hzrddetectSig, 0, sizeof(HAZARD_DETECTION_SIGNAL));
+    // Load-use hazard
     if (IDEXMemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
     }
+    // IDEX branch(jump) hazard
     if (IDEXRegWrite && (BEQ | BNE | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;

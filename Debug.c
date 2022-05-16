@@ -58,7 +58,7 @@ void printIF(void) {
     return;
 }
 
-void printID(void) {
+void printID(int Predictor, const char* Predictbit) {
     printf("\n<<<<<<<<<<<<<<<<<<<<<ID>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(debugid[1].valid)) {  // Pipeline is invalid
         printf("IF/ID pipeline is invalid\n");
@@ -149,8 +149,8 @@ void printID(void) {
         printf("!!Hazard detected. Adding NOP!!\n");
     }
     else {
-        printUpdateBTB();
         printIDforward();
+        printUpdateBTB(&Predictor, Predictbit);
     }
 
     printf("**********************************************\n");
@@ -344,6 +344,10 @@ void printIDforward(void) {
         printf("<Register Read data1 forwarded from ID/EX pipeline>\n");
     }
     else if (idfwrdSig.IDForwardA[1] == 1 && idfwrdSig.IDForwardA[0] == 0) {
+        if (idfwrdSig.EXMEMupperimmA) {
+            printf("<Register Read data1 forwarded from EX/MEM pipeline upperimm>\n");
+            return;
+        }
         printf("<Register Read data1 forwarded from EX/MEM pipeline>\n");
     }
     else if (idfwrdSig.IDForwardA[1] == 0 && idfwrdSig.IDForwardA[0] == 1) {
@@ -354,6 +358,10 @@ void printIDforward(void) {
         printf("<Register Read data2 forwarded from ID/EX pipeline>\n");
     }
     else if (idfwrdSig.IDForwardB[1] == 1 && idfwrdSig.IDForwardB[0] == 0) {
+        if (idfwrdSig.EXMEMupperimmB) {
+            printf("<Register Read data2 forwarded from EX/MEM pipeline upperimm>\n");
+            return;
+        }
         printf("<Register Read data2 forwarded from EX/MEM pipeline>\n");
     }
     else if (idfwrdSig.IDForwardB[1] == 0 && idfwrdSig.IDForwardB[0] == 1) {
@@ -387,10 +395,11 @@ void printEXforward(void) {
     return;
 }
 
-void printUpdateBTB(void) {
+void printUpdateBTB(const int* Predictor, const char* Predictbit) {
     if (debugid[1].Branch) {
         if (debugid[1].AddressHit) {
             if (debugid[1].PCBranch) {
+                printf("<Update GHR[0] to 1>\n");
                 printf("Branch taken, ");
                 if (debugid[1].Predict) {
                     printf("predicted branch taken.\nBranch prediction HIT.\n");
@@ -398,10 +407,11 @@ void printUpdateBTB(void) {
                 else {
                     printf("predicted branch not taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
                 }
-                printPBtaken();
+                printPBtaken(Predictor, Predictbit);
             }
 
             else {
+                printf("<Update GHR[0] to 0>\n");
                 printf("Branch not taken, ");
                 if (debugid[1].Predict) {
                     printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
@@ -409,37 +419,90 @@ void printUpdateBTB(void) {
                 else {
                     printf("predicted branch not taken.\nBranch prediction HIT.\n");
                 }
-                printPBnottaken();
+                printPBnottaken(Predictor, Predictbit);
             }
         }
 
         else {
-            printf("## Write PC to BTB ##\n");
             if (debugid[1].PCBranch) {
-                printPBtaken();
-                printf("Instruction is branch. FLushing IF instruction.\n");
+                printf("<Update GHR[0] to 1>\n");
+                printPBtaken(Predictor, Predictbit);
+                printf("Instruction is taken branch. FLushing IF instruction.\n");
             }
+            else {
+                printf("<Update GHR[0] to 0>\n");
+                printf("Instruction is not taken branch.\nBranch prediction HIT.\n");
+            }
+            printf("## Write PC to BTB ##\n");
+            printf("Branch PC : 0x%08x\n", BranchPred.BTB[BranchPred.BTBindex[1]][0]);
+            printf("Predicted target : 0x%08x\n", BranchPred.BTB[BranchPred.BTBindex[1]][1]);
+        }
+        if (*Predictor == 2) {
+            printf ("GHR = %d%d%d%d\n", BranchPred.GHR[3], BranchPred.GHR[2], BranchPred.GHR[1], BranchPred.GHR[0]);
         }
     }
     return;
 }
 
-void printPBtaken(void) {
-    if (debugid[1].PB == 1 || debugid[1].PB == 2 || debugid[1].PB == 3) {
-        printf("<Update PB to 3>\n");
+void printPBtaken(const int* Predictor, const char* Predictbit) {
+    switch (*Predictbit) {
+        case '1' :
+            printf("<Update PB to 1>\n");
+            break;
+
+        case '2' :
+            if (debugid[1].PB == 1 || debugid[1].PB == 2 || debugid[1].PB == 3) {
+                printf("<Update PB to 3>\n");
+            }
+            else if (debugid[1].PB == 0) {
+                printf("<Update PB to 1>\n");
+            }
+            break;
     }
-    else if (debugid[1].PB == 0) {
-        printf("<Update PB to 1>\n");
+    switch (*Predictor) {
+        case 1 :
+            printf("Branch PC : 0x08%x\n", BranchPred.DP[BranchPred.DPindex[1]][0]);
+            printf("Prediction bits : %d\n", BranchPred.DP[BranchPred.DPindex[1]][1]);
+            break;
+
+        case 2 :
+            printf("Index : ");
+            for (int j = 3; j >= 0; j--) {
+                printf("%d", BranchPred.BHT[BranchPred.BHTindex[1]][0] >> j & 1);
+            }
+            printf("\nPrediction bits : %d\n", BranchPred.BHT[BranchPred.BHTindex[1]][1]);
+            break;
     }
     return;
 }
 
-void printPBnottaken(void) {
-    if (debugid[1].PB == 0 || debugid[1].PB == 1 || debugid[1].PB == 2) {
-        printf("<Update PB to 0>\n");
+void printPBnottaken(const int* Predictor, const char* Predictbit) {
+    switch (*Predictbit) {
+        case '1' :
+            printf("<Update PB to 0>\n");
+            break;
+        case '2' :
+            if (debugid[1].PB == 0 || debugid[1].PB == 1 || debugid[1].PB == 2) {
+                printf("<Update PB to 0>\n");
+            }
+            else if (debugid[1].PB == 3) {
+                printf("<Update PB to 2>\n");
+            }
+            break;
     }
-    else if (debugid[1].PB == 3) {
-        printf("<Update PB to 2>\n");
+    switch (*Predictor) {
+        case 1 :
+            printf("Branch PC : 0x08%x\n", BranchPred.DP[BranchPred.DPindex[1]][0]);
+            printf("Prediction bits : %d\n", BranchPred.DP[BranchPred.DPindex[1]][1]);
+            break;
+
+        case 2 :
+            printf("Index : ");
+            for (int j = 3; j >= 0; j--) {
+                printf("%d", BranchPred.BHT[BranchPred.BHTindex[1]][0] >> j & 1);
+            }
+            printf("\nPrediction bits : %d\n", BranchPred.BHT[BranchPred.BHTindex[1]][1]);
+            break;
     }
     return;
 }

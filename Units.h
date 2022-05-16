@@ -90,7 +90,7 @@ typedef struct _FORWARD_SIGNAL {  // Forward unit signals
 }FORWARD_SIGNAL;
 
 typedef struct _ID_FORWARD_SIGNAL {  // Branch forward unit signals
-    bool IDForwardA[2], IDForwardB[2];
+    bool IDForwardA[2], IDForwardB[2], EXMEMupperimmA, EXMEMupperimmB;
 }ID_FORWARD_SIGNAL;
 
 typedef struct _MEM_FORWARD_SIGNAL {
@@ -102,22 +102,22 @@ typedef struct _HAZARD_DETECTION_SIGNAL {  // Hazard detection unit signals
 }HAZARD_DETECTION_SIGNAL;
 
 typedef struct _BRANCH_PREDICT {  // Branch prediction unit
+    uint32_t instPC[2];  // [0] : now PC, [1] : previous PC
     bool Predict[2];  // [0] : now PC, [1] : previous PC
     bool AddressHit[2];  // [0] : now PC, [1] : previous PC
     int BTBindex[2];  // [0] : now PC, [1] : previous PC
     int BTBsize;
     int DPindex[2];
     int DPsize;
+    int BHTindex[2];
+    int IFBHTindex;
     uint32_t BTB[BTBMAX][3];  // Branch Target Buffer
     // [i][0] = Branch instruction PC, [i][1] = Branch Target, [i][2] = Frequency (How many times used)
     uint32_t DP[BTBMAX][3];  // Direction Predictor
     // [i][0] = Branch instruction PC, [i][1] = Prediction bits, [i][2] = Frequency (How many times used)
-    uint32_t instPC[2];  // [0] : now PC, [1] : previous PC
-
-    // TODO
-    //  make Pattern History Table
-    uint8_t BHT[BHTMAX][2];  // Branch History table (2^GHRMAX size)
-    uint8_t GHR;  // Global History Register (4 bits)
+    uint8_t BHT[BHTMAX][3];  // Branch History table (2^GHRMAX size)
+    // [i][0] = GHR index, [i][1] = Prediction bits, [i][2] = Frequency (How many times used)
+    bool GHR[4];  // Global History Register (4 bits)
 }BRANCH_PREDICT;
 
 /* Data units */
@@ -126,9 +126,18 @@ uint32_t InstMem(uint32_t Readaddr);  // Instruction memory
 uint32_t* RegsRead(uint8_t Readreg1, uint8_t Readreg2);  // Registers (ID)
 void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite);  // Registers (WB)
 uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite);  // Data memory
-void CheckBranch(uint32_t PCvalue);  // Check branch in IF stage
-void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr);  // Update BTB
-void BranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
+// One-level branch predictor
+void CheckBranch(uint32_t PCvalue, const char* Predictbit);  // Check branch in IF stage
+void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit);  // Update BTB
+void BranchBufferWrite(uint32_t WritePC, uint32_t Address, const char* Predictbit);  // Write BranchAddr to BTB
+void PBtaken(uint8_t Predbit, const char* Predictbit);
+void PBnottaken(uint8_t Predbit, const char* Predictbit);
+// Gshare branch predictor
+void GshareCheckBranch(uint32_t PCvaluePCvalue, const char* Predictbit);
+void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit);
+void GshareBranchBufferWrite(uint32_t WritePC, uint32_t Address);
+void GsharePBtaken(uint8_t Predbit, const char* Predictbit);
+void GsharePBnottaken(uint8_t Predbit, const char* Predictbit);
 
 uint32_t ALU(uint32_t input1, uint32_t input2, char ALUSig);  // ALU
 uint32_t MUX(uint32_t input1, uint32_t input2, bool signal);  // signal == 0) input1, 1) input2
@@ -141,17 +150,13 @@ void ALUCtrlUnit(uint8_t funct, char ALUOp);  // ALU control unit
 void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
                  bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]);  // Forward unit (EX, MEM hazard)
 void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
-                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite);  // Branch Forward unit (ID hazard by beq, bne)
+                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]);  // Branch Forward unit (ID hazard by beq, bne)
 void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBRegWrite);
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
                     bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump);  // Hazard detection unit
 
 /* Select ALU operation */
 char Rformat(uint8_t funct);  // select ALU operation by funct (R-format)
-
-/* Update prediction bits */
-void PBtaken(uint8_t Predbit);
-void PBnottaken(uint8_t Predbit);
 
 /* Overflow exception */
 void OverflowException();  // Overflow exception

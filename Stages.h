@@ -8,10 +8,15 @@
 #include <stdint.h>
 
 /* Stages */
-void IF(void);  // Instruction Fetch
-void ID(void);  // Instruction Decode
+void OnelevelIF(const char* Predictbit);  // Instruction Fetch (One Level Predictor)
+void GshareIF(const char* Predictbit);  // Instruction Fetch (Gshare Predictor)
+void OnelevelID(const char* Predictbit);  // Instruction Decode (One Level Predictor)
+void GshareID(const char* Predictbit);  // Instruction Decode (Gshare Predictor)
 void EX(void);  // EXecute
 void MEM(void);  // MEMory access
 void WB(void);  // Write Back
+
+// make GHR index (2^GHRs)
+uint8_t makeGHRindex(const bool GHR[], uint32_t PCvalue);
 
 #endif //CAMP_PROJECT3_STAGES_H

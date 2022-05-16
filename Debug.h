@@ -62,16 +62,16 @@ typedef struct _DEBUGWB {
 }DEBUGWB;
 
 void printIF(void);
-void printID(void);
+void printID(int Predictor, const char* Predictbit);
 void printEX(void);
 void printMEM(void);
 void printWB(void);
 void printRformat(void);
 void printIDforward(void);
 void printEXforward(void);
-void printUpdateBTB(void);
-void printPBtaken(void);
-void printPBnottaken(void);
+void printUpdateBTB(const int* Predictor, const char* Predictbit);
+void printPBtaken(const int* Predictor, const char* Predictbit);
+void printPBnottaken(const int* Predictor, const char* Predictbit);
 void DebugPipelineHandsOver(void);
 
 #endif //CAMP_PROJECT3_DEBUG_H
