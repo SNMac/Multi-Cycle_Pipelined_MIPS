@@ -41,9 +41,12 @@ void printIF(int Predictor) {
     printf("PC : 0x%08x\n", debugif.IFPC);
     printf("Fetch instruction : 0x%08x\n", debugif.IFinst);
 
-    if (Predictor == 1 || Predictor == 2) {
+    if (Predictor == 1 || Predictor == 2 || Predictor == 3) {
         if (debugif.AddressHit == 0) {
             printf("<BTB hasn't PC value.>\n");
+        }
+        else if (debugif.AddressHit == 1 && Predictor == 3) {
+            printf("<BTB has PC value. Predict that branch is taken.>\n");
         }
         else if (debugif.AddressHit == 1 && debugif.Predict == 1) {
             printf("<BTB has PC value. Predict that branch is taken.>\n");
@@ -402,62 +405,73 @@ void printUpdateBTB(const int* Predictor, const char* Predictbit) {
         if (debugid[1].AddressHit) {
             if (debugid[1].PCBranch) {
                 printf("Branch taken, ");
+                if (*Predictor == 3) {
+                    printf("predicted branch taken.\nBranch prediction HIT.\n");
+                    return;
+                }
                 if (debugid[1].Predict) {
                     printf("predicted branch taken.\nBranch prediction HIT.\n");
                 }
                 else {
                     printf("predicted branch not taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
                 }
-                if (*Predictor == 2) {
-                    printf("<Update GHR[0] to 1>\n");
-                }
                 if (*Predictor == 1 || *Predictor == 2) {
+                    if (*Predictor == 2) {
+                        printf("<Update GHR[0] to 1>\n");
+                    }
                     printPBtaken(Predictor, Predictbit);
                 }
             }
 
             else {
                 printf("Branch not taken, ");
+                if (*Predictor == 3) {
+                    printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
+                    return;
+                }
                 if (debugid[1].Predict) {
                     printf("predicted branch taken.\nBranch prediction not HIT. Flushing IF instruction.\n");
                 }
                 else {
                     printf("predicted branch not taken.\nBranch prediction HIT.\n");
                 }
-                if (*Predictor == 2) {
-                    printf("<Update GHR[0] to 0>\n");
-                }
                 if (*Predictor == 1 || *Predictor == 2) {
+                    if (*Predictor == 2) {
+                        printf("<Update GHR[0] to 0>\n");
+                    }
                     printPBnottaken(Predictor, Predictbit);
                 }
             }
         }
-
         else {
+            if (*Predictor == 1 || *Predictor == 2 || *Predictor == 3) {
+                printf("## Write PC to BTB ##\n");
+                printf("Branch PC : 0x%08x\n", BranchPred.BTB[BranchPred.BTBindex[1]][0]);
+                printf("Predicted target : 0x%08x\n", BranchPred.BTB[BranchPred.BTBindex[1]][1]);
+            }
             if (debugid[1].PCBranch) {
-                if (*Predictor == 2) {
-                    printf("<Update GHR[0] to 1>\n");
-                }
                 if (*Predictor == 1 || *Predictor == 2) {
+                    if (*Predictor == 2) {
+                        printf("<Update GHR[0] to 1>\n");
+                    }
                     printPBtaken(Predictor, Predictbit);
                 }
-                if (*Predictor == 4) {
-                    printf("Instruction is taken branch. Branch prediction not HIT.\nFLushing IF instruction.\n");
+                else if (*Predictor == 4) {
+                    printf("Branch taken, predicted branch not taken.\nBranch prediction not HIT.\n");
+                    printf("FLushing IF instruction.\n");
+                    return;
                 }
-                else {
-                    printf("Instruction is taken branch. FLushing IF instruction.\n");
-                }
+                printf("Instruction is taken branch. FLushing IF instruction.\n");
             }
             else {
                 if (*Predictor == 2) {
                     printf("<Update GHR[0] to 0>\n");
                 }
-                printf("Instruction is not taken branch.\nBranch prediction HIT.\n");
-            }
-            if (*Predictor == 1 || *Predictor == 2) {
-                printf("## Write PC to BTB ##\n");
-                printf("Branch PC : 0x%08x\n", BranchPred.BTB[BranchPred.BTBindex[1]][0]);
-                printf("Predicted target : 0x%08x\n", BranchPred.BTB[BranchPred.BTBindex[1]][1]);
+                else if (*Predictor == 4) {
+                    printf("Branch not taken, predicted branch not taken.\nBranch prediction HIT.\n");
+                    return;
+                }
+                printf("Instruction is not taken branch.\n");
             }
         }
         if (*Predictor == 2) {
@@ -484,7 +498,7 @@ void printPBtaken(const int* Predictor, const char* Predictbit) {
     }
     switch (*Predictor) {
         case 1 :
-            printf("Branch PC : 0x08%x\n", BranchPred.DP[BranchPred.DPindex[1]][0]);
+            printf("Branch PC : 0x%08x\n", BranchPred.DP[BranchPred.DPindex[1]][0]);
             printf("Prediction bits : %d\n", BranchPred.DP[BranchPred.DPindex[1]][1]);
             break;
 
@@ -515,7 +529,7 @@ void printPBnottaken(const int* Predictor, const char* Predictbit) {
     }
     switch (*Predictor) {
         case 1 :
-            printf("Branch PC : 0x08%x\n", BranchPred.DP[BranchPred.DPindex[1]][0]);
+            printf("Branch PC : 0x%08x\n", BranchPred.DP[BranchPred.DPindex[1]][0]);
             printf("Prediction bits : %d\n", BranchPred.DP[BranchPred.DPindex[1]][1]);
             break;
 

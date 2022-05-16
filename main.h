@@ -21,13 +21,13 @@ char PredSelector(void);
 char PBSelector(void);
 void OnelevelPredict(const char* Predictbit);
 void GsharePredict(const char* Predictbit);
-void AlwaysTaken(void);
+void AlwaysTaken();
 void AlwaysnotTaken(void);
 void Firstinit(const char* Predictbit);
 void printnextPC(void);
 void OnelevelPipelineHandsOver(void);
 void GsharePipelineHandsOver(void);
 void countingFormat(void);
-void printFinalresult(const char* Predictor);
+void printFinalresult(const char* Predictor, const char* Predictbit);
 
 #endif //CAMP_PROJECT3_MAIN_H

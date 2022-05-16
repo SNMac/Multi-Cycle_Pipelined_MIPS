@@ -126,6 +126,8 @@ uint32_t InstMem(uint32_t Readaddr);  // Instruction memory
 uint32_t* RegsRead(uint8_t Readreg1, uint8_t Readreg2);  // Registers (ID)
 void RegsWrite(uint8_t Writereg, uint32_t Writedata, bool RegWrite);  // Registers (WB)
 uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite);  // Data memory
+
+/* Branch Predictor */
 // One-level branch predictor
 void CheckBranch(uint32_t PCvalue, const char* Predictbit);  // Check branch in IF stage
 void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit);  // Update BTB
@@ -139,7 +141,10 @@ void GshareBranchBufferWrite(uint32_t WritePC, uint32_t Address);
 void GsharePBtaken(uint8_t Predbit, const char* Predictbit);
 void GsharePBnottaken(uint8_t Predbit, const char* Predictbit);
 // Always taken or not taken
-void BranchAlways(bool Branch, bool PCBranch);
+void AlwaysTakenCheckBranch(uint32_t PCvalue);  // Check branch in IF stage
+void AlwaysTakenUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr);  // Update BTB
+void AlwaysTakenBranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
+void BranchAlwaysnotTaken(bool Branch, bool PCBranch);
 
 uint32_t ALU(uint32_t input1, uint32_t input2, char ALUSig);  // ALU
 uint32_t MUX(uint32_t input1, uint32_t input2, bool signal);  // signal == 0) input1, 1) input2

@@ -58,15 +58,20 @@ int main(int argc, char* argv[]) {
             PredictionBitSelector = *argv[3];
         }
     }
+    // TODO
+    //  make counter selector
+
+    // TODO
+    //  make BTFNT predictor
     else {
         filename = malloc(sizeof(char) * 20);
         printf("#################################################\n");
         printf("simple.bin  simple2.bin  simple3.bin  simple4.bin\n");
         printf("fib.bin  fib_jalr.bin  gcd.bin  input4.bin\n");
+        printf("#################################################\n");
         printf("\nInput filename : \n");
         scanf("%s", filename);
         getchar();
-        printf("#################################################\n");
         PredictorSelector = PredSelector();
         if (PredictorSelector == '1' || PredictorSelector == '2') {
             PredictionBitSelector = PBSelector();
@@ -109,14 +114,12 @@ int main(int argc, char* argv[]) {
             break;
 
         case '3' :
-//            AlwaysTaken();
+            AlwaysTaken();
             break;
 
         case '4' :
             AlwaysnotTaken();
             break;
-            // TODO
-            //  make Always Taken && Always not taken
 
         default :
             fprintf(stderr, "ERROR: Predictor select number is wrong.\n");
@@ -124,7 +127,7 @@ int main(int argc, char* argv[]) {
     }
 
     END:
-    printFinalresult(&PredictorSelector);
+    printFinalresult(&PredictorSelector, &PredictionBitSelector);
     free(filename);
     fclose(fp);
     clock_t end = clock();
@@ -138,11 +141,11 @@ char PredSelector(void) {
     printf("\n#############################################################################\n");
     printf("1 : One-level Branch Predictor, 2 : Two-level Global History Branch Predictor\n");
     printf("3 : Always Taken Predictor,     4 : Always Not Taken Predictor               \n");
+    printf("#############################################################################\n");
     printf("\nSelect branch predictor : \n");
     scanf("%c", &retVal);
     getchar();
     if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4') {
-        printf("#############################################################################\n");
         return retVal;
     }
     else {
@@ -156,11 +159,11 @@ char PBSelector(void) {
     char retVal;
     printf("\n##########################################\n");
     printf("1 : 1-bit prediction, 2 : 2-bit prediction\n");
+    printf("##########################################\n");
     printf("\nSelect prediction bit : \n");
     scanf("%c", &retVal);
     getchar();
     if (retVal == '1' || retVal == '2') {
-        printf("##########################################\n");
         return retVal;
     }
     else {
@@ -197,7 +200,7 @@ void OnelevelPredict(const char* Predictbit) {
     }
 }
 
-// Gshare predictor version
+// Gshare predictor execute
 void GsharePredict(const char* Predictbit) {
     while(1) {
         if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
@@ -224,33 +227,35 @@ void GsharePredict(const char* Predictbit) {
     }
 }
 
-//void AlwaysTaken(void) {
-//    while(1) {
-//        if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
-//            return;
-//        }
-//
-//        AlwaysTakenIF();
-//        AlwaysTakenID();
-//        EX();
-//        MEM();
-//        WB();
-//        printIF(3);
-//        printID(3, 0);
-//        printEX();
-//        printMEM();
-//        printWB();
-//        printnextPC();
-//
-//        countingFormat();
-//        OnelevelPipelineHandsOver();
-//        DebugPipelineHandsOver();
-//
-//        counting.cycle++;
-//        printf("\n================================ CC %d ================================\n", counting.cycle);
-//    }
-//}
+// Always taken predictor execute
+void AlwaysTaken(void) {
+    while(1) {
+        if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
+            return;
+        }
 
+        AlwaysTakenIF();
+        AlwaysTakenID();
+        EX();
+        MEM();
+        WB();
+        printIF(3);
+        printID(3, 0);
+        printEX();
+        printMEM();
+        printWB();
+        printnextPC();
+
+        countingFormat();
+        OnelevelPipelineHandsOver();
+        DebugPipelineHandsOver();
+
+        counting.cycle++;
+        printf("\n================================ CC %d ================================\n", counting.cycle);
+    }
+}
+
+// Always not taken predictor execute
 void AlwaysnotTaken(void) {
     while(1) {
         if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
@@ -391,7 +396,7 @@ void countingFormat(void) {
     return;
 }
 
-void printFinalresult(const char* Predictor) {
+void printFinalresult(const char* Predictor, const char* Predictbit) {
     printf("\n\n===============================================================\n");
     printf("===============================================================\n");
     printf("<<<<<<<<<<<<<<<<<<<<<<<<End of execution>>>>>>>>>>>>>>>>>>>>>>>>\n");
@@ -447,6 +452,7 @@ void printFinalresult(const char* Predictor) {
 
         case '4' :
             break;
+
         default :
             fprintf(stderr, "ERROR: Wrong predictor select number\n");
             exit(EXIT_FAILURE);
@@ -462,7 +468,36 @@ void printFinalresult(const char* Predictor) {
     double CPI = (double)counting.cycle / (double)(counting.Rcount + counting.Icount + counting.Jcount);
 
     // Print summary
-    printf("\n\nFinal return value R[2] = %d\n", R[2]);
+    switch (*Predictor) {
+        case '1' :
+            printf("\n\nBranch predictor : One-level\n");
+            break;
+
+        case '2' :
+            printf("\n\nBranch predictor : Gshare\n");
+            break;
+
+        case '3' :
+            printf("\n\nBranch predictor : Always taken\n");
+            break;
+
+        case '4' :
+            printf("\n\nBranch predictor : Always not-taken\n");
+            break;
+    }
+    switch (*Predictbit) {
+        case '0' :
+            break;
+
+        case '1' :
+            printf("Prediction bit : 1bit\n");
+            break;
+
+        case '2' :
+            printf("Prediction bit : 2bit\n");
+            break;
+    }
+    printf("Final return value R[2] = %d\n", R[2]);
     printf("# of clock cycles : %d\n", counting.cycle);
     printf("# of executed instructions : %d\n", counting.Rcount + counting.Icount + counting.Jcount);
     printf("Cylces Per Instruction(CPI) : %.2lf\n", CPI);
