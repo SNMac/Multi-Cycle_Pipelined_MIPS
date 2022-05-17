@@ -13,7 +13,7 @@
 #include "Stages.h"
 #include "Debug.h"
 
-#define DIRECTORY "../testbin"
+#define DIRECTORY "../testbin/"
 #define SAFE_FREE(p) {if(p!=NULL){free(p);p=NULL;}}
 COUNTING counting;  // for result counting
 
@@ -37,7 +37,8 @@ extern DEBUGWB debugwb[2];
 
 int main(int argc, char* argv[]) {
     while (1) {
-        char* filename;
+        char* filename = malloc(sizeof(char) * 20);
+        strcat(filename, DIRECTORY);
         char PredictorSelector;
         char PredictionBitSelector = '0';
         char CounterSelector;
@@ -149,6 +150,7 @@ int main(int argc, char* argv[]) {
         END:
         printFinalresult(&PredictorSelector, &PredictionBitSelector, filename, &CounterSelector);
         fclose(fp);
+        free(filename);
         clock_t end = clock();
         printf("Execution time : %lf\n", (double)(end - start) / CLOCKS_PER_SEC);
 
@@ -217,7 +219,7 @@ void FileSelect(char** name) {
             printf("User inputted wrong number. Please try again.\n");
         }
         else {
-            *name = files[filenameSelector - 1];
+            strcat(*name, files[filenameSelector - 1]);
             break;
         }
     }
@@ -649,7 +651,7 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
 
     printf("\n\n");
     // Print executed file name
-    printf("File name : %s\n", filename);
+    printf("File directory : %s\n", filename);
 
     // Calculate Branch Hit rate
     double BranchHitrate = 0;
@@ -658,7 +660,10 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
     }
 
     // Calculate Cycles Per Instruction
-    double CPI = (double)counting.cycle / (double)(counting.Rcount + counting.Icount + counting.Jcount);
+    double CPI = 0;
+    if (counting.Rcount + counting.Icount + counting.Jcount != 0) {
+        CPI = (double)counting.cycle / (double)(counting.Rcount + counting.Icount + counting.Jcount);
+    }
 
     // Print summary
     switch (*Predictor) {
@@ -687,11 +692,11 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             break;
 
         case '1' :
-            printf("Prediction Bit : 1bit\n");
+            printf("Prediction Bit : 1-bit\n");
             break;
 
         case '2' :
-            printf("Prediction Bit : 2bit\n");
+            printf("Prediction Bit : 2-bit\n");
             break;
     }
     switch (*Counter) {
@@ -706,7 +711,7 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             printf("Counter : Hysteresis\n");
             break;
     }
-    printf("Final return value R[2] = %d\n", R[2]);
+    printf("\nFinal return value R[2] = %d\n", R[2]);
     printf("# of clock cycles : %d\n", counting.cycle);
     printf("# of executed instructions : %d\n", counting.Rcount + counting.Icount + counting.Jcount);
     printf("Cylces Per Instruction(CPI) : %.2lf\n", CPI);
