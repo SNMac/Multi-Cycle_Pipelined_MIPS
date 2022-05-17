@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
         char retry;
         printf("\n\nRetry? (Y/N) : ");
         while (1) {
-            scanf("%c", &retry);
+            scanf(" %c", &retry);
             getchar();
             if (retry == 'N') {
                 return 0;
