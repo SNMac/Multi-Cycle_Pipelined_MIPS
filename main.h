@@ -17,8 +17,11 @@ typedef struct _COUNTING {
     int nottakenBranch;  // not taken Branch count
 }COUNTING;
 
-char PredSelector(void);
-char PBSelector(void);
+void ReadDirectory(char** files);
+void FileSelect(char** file);
+char PredSelect(void);
+char PBSelect(void);
+char CounterSelect(void);
 void OnelevelPredict(const char* Predictbit);
 void GsharePredict(const char* Predictbit);
 void AlwaysTaken();
@@ -28,6 +31,6 @@ void printnextPC(void);
 void OnelevelPipelineHandsOver(void);
 void GsharePipelineHandsOver(void);
 void countingFormat(void);
-void printFinalresult(const char* Predictor, const char* Predictbit);
+void printFinalresult(const char* Predictor, const char* Predictbit, const char* filename);
 
 #endif //CAMP_PROJECT3_MAIN_H

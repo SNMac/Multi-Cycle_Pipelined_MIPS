@@ -5,12 +5,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <time.h>
 
 #include "main.h"
 #include "Units.h"
 #include "Stages.h"
 #include "Debug.h"
+
+#define DIRECTORY "../testbin"
 
 COUNTING counting;  // for result counting
 
@@ -35,28 +38,37 @@ extern DEBUGWB debugwb[2];
 int main(int argc, char* argv[]) {
     clock_t start = clock();
     char* filename;
-    int filenameSelector;
     char PredictorSelector;
     char PredictionBitSelector = '0';
+    char CounterSelector;
+
     if (argc == 2) {
         filename = argv[1];
-        PredictorSelector = PredSelector();
+        PredictorSelector = PredSelect();
         if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = PBSelector();
+            PredictionBitSelector = PBSelect();
         }
     }
     else if (argc == 3) {
         filename = argv[1];
         PredictorSelector = *argv[2];
         if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = PBSelector();
+            PredictionBitSelector = PBSelect();
         }
     }
-    else if (argc >= 4) {
+    else if (argc == 4) {
         filename = argv[1];
         PredictorSelector = *argv[2];
         if (PredictorSelector == '1' || PredictorSelector == '2') {
             PredictionBitSelector = *argv[3];
+        }
+    }
+    else if (argc >= 5) {
+        filename = argv[1];
+        PredictorSelector = *argv[2];
+        if (PredictorSelector == '1' || PredictorSelector == '2') {
+            PredictionBitSelector = *argv[3];
+            CounterSelector = *argv[4];
         }
     }
     // TODO
@@ -65,54 +77,10 @@ int main(int argc, char* argv[]) {
     // TODO
     //  make BTFNT predictor
     else {
-        printf("###################################################\n");
-        printf("1 : simple.bin,  2 : simple2.bin,  3 : simple3.bin\n");
-        printf("4 : simple4.bin, 5 : fib.bin,      6 : fib_jalr.bin\n");
-        printf("7 : gcd.bin,     8 : input4.bin\n");
-        printf("###################################################\n");
-        printf("\nSelect filename : \n");
-        scanf("%d", &filenameSelector);
-        getchar();
-        switch (filenameSelector) {
-            case 1 :
-                filename = "simple.bin";
-                break;
-
-            case 2 :
-                filename = "simple2.bin";
-                break;
-
-            case 3 :
-                filename = "simple3.bin";
-                break;
-
-            case 4 :
-                filename = "simple4.bin";
-                break;
-
-            case 5 :
-                filename = "fib.bin";
-                break;
-
-            case 6 :
-                filename = "fib_jalr.bin";
-                break;
-
-            case 7 :
-                filename = "gcd.bin";
-                break;
-
-            case 8 :
-                filename = "input4.bin";
-                break;
-
-            default :
-                fprintf(stderr, "ERROR: Wrong filename select number\n");
-                break;
-        }
-        PredictorSelector = PredSelector();
+        FileSelect(&filename);
+        PredictorSelector = PredSelect();
         if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = PBSelector();
+            PredictionBitSelector = PBSelect();
         }
     }
 
@@ -165,21 +133,117 @@ int main(int argc, char* argv[]) {
     }
 
     END:
-    printFinalresult(&PredictorSelector, &PredictionBitSelector);
+    printFinalresult(&PredictorSelector, &PredictionBitSelector, filename);
     fclose(fp);
     clock_t end = clock();
     printf("Execution time : %lf\n", (double)(end - start) / CLOCKS_PER_SEC);
     return 0;
 }
 
+void ReadDirectory(char** files) {
+    int index = 0;
+    DIR *dir;
+    char* ext;
+    struct dirent *ent;
+    dir = opendir(DIRECTORY);
+
+    if (dir != NULL) { /* print all the files and directories within directory */
+        while ((ent = readdir(dir)) != NULL) {
+            if ((ext = strrchr(ent->d_name, '.')) == NULL) {
+                continue;
+            }
+            if (strcmp(ext, ".bin") == 0) {
+                if (index != 0 && index % 3 != 0) {
+                    printf(", ");
+                }
+                files[index] = ent->d_name;
+                printf("%d : %s", index + 1, files[index]);
+                index++;
+                if (index % 3 == 0) {
+                    printf("\n");
+                }
+            }
+        }
+        printf("\n");
+        closedir(dir);
+    }
+    else { /* could not open directory */
+        perror ("ERROR");
+        exit(EXIT_FAILURE);
+    }
+}
+
+// Filename select
+void FileSelect(char** file) {
+    char* files[10];
+    memset(files, 0, sizeof(files));
+    printf("###################################################\n");
+    ReadDirectory(files);
+    int filenameSelector;
+//    printf("1 : simple.bin,  2 : simple2.bin,  3 : simple3.bin\n");
+//    printf("4 : simple4.bin, 5 : fib.bin,      6 : fib_jalr.bin\n");
+//    printf("7 : gcd.bin,     8 : input4.bin\n");
+    printf("###################################################\n");
+    while (1) {
+        printf("\nSelect filename : ");
+        scanf("%d", &filenameSelector);
+        getchar();
+        if (filenameSelector < 1 || files[filenameSelector - 1] == NULL) {
+            printf("User inputted wrong number. Please try again.\n");
+        }
+        else {
+            *file = files[filenameSelector - 1];
+            break;
+        }
+    }
+//
+//    switch (filenameSelector) {
+//        case 1 :
+//            *file = files[0];
+//            break;
+//
+//        case 2 :
+//            *file = files[1];
+//            break;
+//
+//        case 3 :
+//            *file = files[2];
+//            break;
+//
+//        case 4 :
+//            *file = files[3];
+//            break;
+//
+//        case 5 :
+//            *file = files[4];
+//            break;
+//
+//        case 6 :
+//            *file = files[5];
+//            break;
+//
+//        case 7 :
+//            *file = files[6];
+//            break;
+//
+//        case 8 :
+//            *file = files[7];
+//            break;
+//
+//        default :
+//            fprintf(stderr, "ERROR: Wrong filename select number\n");
+//            break;
+//    }
+}
+
 // Predictor select
-char PredSelector(void) {
+char PredSelect(void) {
     char retVal;
     printf("\n#############################################################################\n");
     printf("1 : One-level Branch Predictor, 2 : Two-level Global History Branch Predictor\n");
     printf("3 : Always Taken Predictor,     4 : Always Not Taken Predictor               \n");
     printf("#############################################################################\n");
-    printf("\nSelect branch predictor : \n");
+    printf("\nSelect branch predictor : ");
     scanf("%c", &retVal);
     getchar();
     if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4') {
@@ -192,12 +256,12 @@ char PredSelector(void) {
 }
 
 // Prediction bit select
-char PBSelector(void) {
+char PBSelect(void) {
     char retVal;
     printf("\n##########################################\n");
     printf("1 : 1-bit prediction, 2 : 2-bit prediction\n");
     printf("##########################################\n");
-    printf("\nSelect prediction bit : \n");
+    printf("\nSelect prediction bit : ");
     scanf("%c", &retVal);
     getchar();
     if (retVal == '1' || retVal == '2') {
@@ -433,7 +497,7 @@ void countingFormat(void) {
     return;
 }
 
-void printFinalresult(const char* Predictor, const char* Predictbit) {
+void printFinalresult(const char* Predictor, const char* Predictbit, const char* filename) {
     printf("\n\n===============================================================\n");
     printf("===============================================================\n");
     printf("<<<<<<<<<<<<<<<<<<<<<<<<End of execution>>>>>>>>>>>>>>>>>>>>>>>>\n");
@@ -445,6 +509,7 @@ void printFinalresult(const char* Predictor, const char* Predictbit) {
     }
     printf("############################################\n");
 
+    // Print selected predictor
     switch (*Predictor) {
         case '1' :  // One-level predictor
             // Print DP
@@ -485,15 +550,21 @@ void printFinalresult(const char* Predictor, const char* Predictbit) {
             break;
 
         case '3' :
+            // Print nothing
             break;
 
         case '4' :
+            // Print nothing
             break;
 
         default :
             fprintf(stderr, "ERROR: Wrong predictor select number\n");
             exit(EXIT_FAILURE);
     }
+
+    printf("\n\n");
+    // Print executed file name
+    printf("Selected filename : %s\n", filename);
 
     // Calculate Branch Hit rate
     double BranchHitrate = 0;
@@ -507,19 +578,19 @@ void printFinalresult(const char* Predictor, const char* Predictbit) {
     // Print summary
     switch (*Predictor) {
         case '1' :
-            printf("\n\nBranch predictor : One-level\n");
+            printf("Branch predictor : One-level\n");
             break;
 
         case '2' :
-            printf("\n\nBranch predictor : Gshare\n");
+            printf("Branch predictor : Gshare\n");
             break;
 
         case '3' :
-            printf("\n\nBranch predictor : Always taken\n");
+            printf("Branch predictor : Always taken\n");
             break;
 
         case '4' :
-            printf("\n\nBranch predictor : Always not-taken\n");
+            printf("Branch predictor : Always not-taken\n");
             break;
     }
     switch (*Predictbit) {
