@@ -35,7 +35,7 @@ extern DEBUGEX debugex[2];
 extern DEBUGMEM debugmem[2];
 extern DEBUGWB debugwb[2];
 
-int main(int argc, char* argv[]) {
+int main(void) {
     while (1) {
         char* filename = malloc(sizeof(char) * 20);
         strcat(filename, DIRECTORY);
@@ -43,56 +43,15 @@ int main(int argc, char* argv[]) {
         char PredictionBitSelector = '0';
         char CounterSelector;
 
-        if (argc == 2) {
-            filename = argv[1];
-            PredictorSelector = PredSelect();
-            if (PredictorSelector == '1' || PredictorSelector == '2') {
-                PredictionBitSelector = PBSelect();
-                if (PredictionBitSelector == '2') {
-                    CounterSelector = CounterSelect();
-                }
+        FileSelect(&filename);
+        PredictorSelector = PredSelect();
+        if (PredictorSelector == '1' || PredictorSelector == '2') {
+            PredictionBitSelector = PBSelect();
+            if (PredictionBitSelector == '2') {
+                CounterSelector = CounterSelect();
             }
         }
-        else if (argc == 3) {
-            filename = argv[1];
-            PredictorSelector = *argv[2];
-            if (PredictorSelector == '1' || PredictorSelector == '2') {
-                PredictionBitSelector = PBSelect();
-                if (PredictionBitSelector == '2') {
-                    CounterSelector = CounterSelect();
-                }
-            }
-        }
-        else if (argc == 4) {
-            filename = argv[1];
-            PredictorSelector = *argv[2];
-            if (PredictorSelector == '1' || PredictorSelector == '2') {
-                PredictionBitSelector = *argv[3];
-                if (PredictionBitSelector == '2') {
-                    CounterSelector = CounterSelect();
-                }
-            }
-        }
-        else if (argc >= 5) {
-            filename = argv[1];
-            PredictorSelector = *argv[2];
-            if (PredictorSelector == '1' || PredictorSelector == '2') {
-                PredictionBitSelector = *argv[3];
-                if (PredictionBitSelector == '2') {
-                    CounterSelector = *argv[4];
-                }
-            }
-        }
-        else {
-            FileSelect(&filename);
-            PredictorSelector = PredSelect();
-            if (PredictorSelector == '1' || PredictorSelector == '2') {
-                PredictionBitSelector = PBSelect();
-                if (PredictionBitSelector == '2') {
-                    CounterSelector = CounterSelect();
-                }
-            }
-        }
+
         clock_t start = clock();
 
         Firstinit(&PredictionBitSelector);
@@ -174,6 +133,29 @@ int main(int argc, char* argv[]) {
     }
 }
 
+// Filename select
+void FileSelect(char** name) {
+    char* files[10];
+    memset(files, 0, sizeof(files));
+    printf("Read *.bin file from designated directory : %s\n", DIRECTORY);
+    printf("###################################################\n");
+    ReadDirectory(files);
+    int filenameSelector;
+    printf("###################################################\n");
+    while (1) {
+        printf("\nSelect filename : ");
+        scanf(" %d", &filenameSelector);
+        getchar();
+        if (filenameSelector < 1 || files[filenameSelector - 1] == NULL) {
+            printf("User inputted wrong number. Please try again.\n");
+        }
+        else {
+            strcat(*name, files[filenameSelector - 1]);
+            break;
+        }
+    }
+}
+
 // Read designated directory
 void ReadDirectory(char** files) {
     int index = 0;
@@ -201,28 +183,6 @@ void ReadDirectory(char** files) {
     }
     printf("\n");
     SAFE_FREE(name_list);
-}
-
-// Filename select
-void FileSelect(char** name) {
-    char* files[10];
-    memset(files, 0, sizeof(files));
-    printf("###################################################\n");
-    ReadDirectory(files);
-    int filenameSelector;
-    printf("###################################################\n");
-    while (1) {
-        printf("\nSelect filename : ");
-        scanf(" %d", &filenameSelector);
-        getchar();
-        if (filenameSelector < 1 || files[filenameSelector - 1] == NULL) {
-            printf("User inputted wrong number. Please try again.\n");
-        }
-        else {
-            strcat(*name, files[filenameSelector - 1]);
-            break;
-        }
-    }
 }
 
 // Predictor select
