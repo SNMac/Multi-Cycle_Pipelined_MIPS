@@ -14,7 +14,7 @@
 #include "Debug.h"
 
 #define DIRECTORY "../testbin"
-
+#define SAFE_FREE(p) {if(p!=NULL){free(p);p=NULL;}}
 COUNTING counting;  // for result counting
 
 uint32_t Memory[0x400000];
@@ -37,7 +37,6 @@ extern DEBUGWB debugwb[2];
 
 int main(int argc, char* argv[]) {
     while (1) {
-        clock_t start = clock();
         char* filename;
         char PredictorSelector;
         char PredictionBitSelector = '0';
@@ -93,6 +92,7 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
+        clock_t start = clock();
 
         Firstinit(&PredictionBitSelector);
 
@@ -175,35 +175,30 @@ int main(int argc, char* argv[]) {
 // Read designated directory
 void ReadDirectory(char** files) {
     int index = 0;
-    DIR *dir;
+    int name_count;
     char* ext;
-    struct dirent *ent;
-    dir = opendir(DIRECTORY);
-
-    if (dir != NULL) { /* print all the files and directories within directory */
-        while ((ent = readdir(dir)) != NULL) {
-            if ((ext = strrchr(ent->d_name, '.')) == NULL) {
-                continue;
+    struct dirent** name_list = NULL;
+    name_count = scandir(DIRECTORY, &name_list, NULL, alphasort);
+    for (int i = 0; i < name_count; i++) {
+        ext = strchr(name_list[i]->d_name, '.');
+        if (ext == NULL) {
+            continue;
+        }
+        if (strcmp(ext, ".bin") == 0) {
+            if (index != 0 && index % 3 != 0) {
+                printf(", ");
             }
-            if (strcmp(ext, ".bin") == 0) {
-                if (index != 0 && index % 3 != 0) {
-                    printf(", ");
-                }
-                files[index] = ent->d_name;
-                printf("%d : %s", index + 1, files[index]);
-                index++;
-                if (index % 3 == 0) {
-                    printf("\n");
-                }
+            files[index] = name_list[i]->d_name;
+            printf("%d : %s", index + 1, files[index]);
+            index++;
+            if (index % 3 == 0) {
+                printf("\n");
             }
         }
-        printf("\n");
-        closedir(dir);
+        SAFE_FREE(name_list[i]);
     }
-    else { /* could not open directory */
-        perror ("ERROR");
-        exit(EXIT_FAILURE);
-    }
+    printf("\n");
+    SAFE_FREE(name_list);
 }
 
 // Filename select
@@ -429,6 +424,7 @@ void BTFNT(void) {
 void Firstinit(const char* Predictbit) {
     memset(&PC, 0, sizeof(PROGRAM_COUNTER));
     memset(&Memory, 0, sizeof(Memory));
+    memset(&R, 0, sizeof(R));
     memset(&BranchPred, 0, sizeof(BRANCH_PREDICT));
     memset(&counting, 0, sizeof(COUNTING));
     switch (*Predictbit) {
