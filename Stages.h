@@ -9,9 +9,9 @@
 
 /* Stages */
 void OnelevelIF(const char* Predictbit);  // Instruction Fetch (One Level Predictor)
-void OnelevelID(const char* Predictbit);  // Instruction Decode (One Level Predictor)
+void OnelevelID(const char* Predictbit, const char* Counter);  // Instruction Decode (One Level Predictor)
 void GshareIF(const char* Predictbit);  // Instruction Fetch (Gshare Predictor)
-void GshareID(const char* Predictbit);  // Instruction Decode (Gshare Predictor)
+void GshareID(const char* Predictbit, const char* Counter);  // Instruction Decode (Gshare Predictor)
 void AlwaysTakenIF(void);  // Instruction Fetch (Always taken predictor)
 void AlwaysTakenID(void);  // Instruction Decode (Always taken predictor)
 void AlwaysnotTakenIF(void);  // Instruction Fetch (Always not taken predictor)

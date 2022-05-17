@@ -65,7 +65,7 @@ void OnelevelIF(const char* Predictbit) {
     return;
 }
 // Instruction Decode (One Level Predictor)
-void OnelevelID(const char* Predictbit) {
+void OnelevelID(const char* Predictbit, const char* Counter) {
     idex[0].valid = ifid[1].valid;
     debugex[0].valid = ifid[1].valid;
 
@@ -117,7 +117,7 @@ void OnelevelID(const char* Predictbit) {
 
     // Update branch result to BTB
     debugid[1].PB = BranchPred.DP[BranchPred.DPindex[1]][1];
-    UpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit);
+    UpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit, Counter);
 
     // Select PC address
     bool PCtarget = BranchPred.AddressHit[0] & BranchPred.Predict[0];
@@ -188,7 +188,7 @@ void GshareIF(const char* Predictbit) {
     return;
 }
 // Instruction Decode (Gshare Predictor)
-void GshareID(const char* Predictbit) {
+void GshareID(const char* Predictbit, const char* Counter) {
     idex[0].valid = ifid[1].valid;
     debugex[0].valid = ifid[1].valid;
 
@@ -240,7 +240,7 @@ void GshareID(const char* Predictbit) {
 
     // Update branch result to BTB
     debugid[1].PB = BranchPred.BHT[BranchPred.BHTindex[1]][1];
-    GshareUpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit);
+    GshareUpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit, Counter);
 
 
     // Select PC address

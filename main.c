@@ -36,112 +36,140 @@ extern DEBUGMEM debugmem[2];
 extern DEBUGWB debugwb[2];
 
 int main(int argc, char* argv[]) {
-    clock_t start = clock();
-    char* filename;
-    char PredictorSelector;
-    char PredictionBitSelector = '0';
-    char CounterSelector;
-
-    if (argc == 2) {
-        filename = argv[1];
-        PredictorSelector = PredSelect();
-        if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = PBSelect();
-        }
-    }
-    else if (argc == 3) {
-        filename = argv[1];
-        PredictorSelector = *argv[2];
-        if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = PBSelect();
-        }
-    }
-    else if (argc == 4) {
-        filename = argv[1];
-        PredictorSelector = *argv[2];
-        if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = *argv[3];
-        }
-    }
-    else if (argc >= 5) {
-        filename = argv[1];
-        PredictorSelector = *argv[2];
-        if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = *argv[3];
-            CounterSelector = *argv[4];
-        }
-    }
-    // TODO
-    //  make counter selector
-
-    // TODO
-    //  make BTFNT predictor
-    else {
-        FileSelect(&filename);
-        PredictorSelector = PredSelect();
-        if (PredictorSelector == '1' || PredictorSelector == '2') {
-            PredictionBitSelector = PBSelect();
-        }
-    }
-
-    FILE* fp = fopen(filename, "rb");
-    if (fp == NULL) {
-	    perror("ERROR");
-	    exit(EXIT_FAILURE);
-    }
-    int buffer;
-    int index = 0;
-    int ret;
     while (1) {
-        ret = fread(&buffer, sizeof(buffer), 1, fp);
-        if (ret != 1) {  // EOF or error
-        break;
+        clock_t start = clock();
+        char* filename;
+        char PredictorSelector;
+        char PredictionBitSelector = '0';
+        char CounterSelector;
+
+        if (argc == 2) {
+            filename = argv[1];
+            PredictorSelector = PredSelect();
+            if (PredictorSelector == '1' || PredictorSelector == '2') {
+                PredictionBitSelector = PBSelect();
+                if (PredictionBitSelector == '2') {
+                    CounterSelector = CounterSelect();
+                }
+            }
         }
-        Memory[index] = __builtin_bswap32(buffer);  // Little endian to Big endian
-        index++;
-    }
-    if (index == 0) {
-        goto END;
-    }
+        else if (argc == 3) {
+            filename = argv[1];
+            PredictorSelector = *argv[2];
+            if (PredictorSelector == '1' || PredictorSelector == '2') {
+                PredictionBitSelector = PBSelect();
+                if (PredictionBitSelector == '2') {
+                    CounterSelector = CounterSelect();
+                }
+            }
+        }
+        else if (argc == 4) {
+            filename = argv[1];
+            PredictorSelector = *argv[2];
+            if (PredictorSelector == '1' || PredictorSelector == '2') {
+                PredictionBitSelector = *argv[3];
+                if (PredictionBitSelector == '2') {
+                    CounterSelector = CounterSelect();
+                }
+            }
+        }
+        else if (argc >= 5) {
+            filename = argv[1];
+            PredictorSelector = *argv[2];
+            if (PredictorSelector == '1' || PredictorSelector == '2') {
+                PredictionBitSelector = *argv[3];
+                if (PredictionBitSelector == '2') {
+                    CounterSelector = *argv[4];
+                }
+            }
+        }
+        else {
+            FileSelect(&filename);
+            PredictorSelector = PredSelect();
+            if (PredictorSelector == '1' || PredictorSelector == '2') {
+                PredictionBitSelector = PBSelect();
+                if (PredictionBitSelector == '2') {
+                    CounterSelector = CounterSelect();
+                }
+            }
+        }
 
-    for (int i = 0; i < index; i++) {
-        printf("Memory [%d] : 0x%08x\n", i, Memory[i]);
-    }
-
-    Firstinit(&PredictionBitSelector);
-
-    switch (PredictorSelector) {
-        case '1' :
-            OnelevelPredict(&PredictionBitSelector);
-            break;
-
-        case '2' :
-            GsharePredict(&PredictionBitSelector);
-            break;
-
-        case '3' :
-            AlwaysTaken();
-            break;
-
-        case '4' :
-            AlwaysnotTaken();
-            break;
-
-        case '5' :
-            BTFNT();
-            break;
-
-        default :
-            fprintf(stderr, "ERROR: main) char PredictorSelector is wrong.\n");
+        FILE* fp = fopen(filename, "rb");
+        if (fp == NULL) {
+            perror("ERROR");
             exit(EXIT_FAILURE);
-    }
+        }
+        int buffer;
+        int index = 0;
+        int ret;
+        while (1) {
+            ret = fread(&buffer, sizeof(buffer), 1, fp);
+            if (ret != 1) {  // EOF or error
+                break;
+            }
+            Memory[index] = __builtin_bswap32(buffer);  // Little endian to Big endian
+            index++;
+        }
+        if (index == 0) {
+            goto END;
+        }
 
-    END:
-    printFinalresult(&PredictorSelector, &PredictionBitSelector, filename);
-    fclose(fp);
-    clock_t end = clock();
-    printf("Execution time : %lf\n", (double)(end - start) / CLOCKS_PER_SEC);
-    return 0;
+        for (int i = 0; i < index; i++) {
+            printf("Memory [%d] : 0x%08x\n", i, Memory[i]);
+        }
+
+        Firstinit(&PredictionBitSelector);
+
+        switch (PredictorSelector) {
+            case '1' :
+                OnelevelPredict(&PredictionBitSelector, &CounterSelector);
+                break;
+
+            case '2' :
+                GsharePredict(&PredictionBitSelector, &CounterSelector);
+                break;
+
+            case '3' :
+                AlwaysTaken();
+                break;
+
+            case '4' :
+                AlwaysnotTaken();
+                break;
+
+            case '5' :
+                BTFNT();
+                break;
+
+            default :
+                fprintf(stderr, "ERROR: main) char PredictorSelector is wrong.\n");
+                exit(EXIT_FAILURE);
+        }
+
+        END:
+        printFinalresult(&PredictorSelector, &PredictionBitSelector, filename, &CounterSelector);
+        fclose(fp);
+        clock_t end = clock();
+        printf("Execution time : %lf\n", (double)(end - start) / CLOCKS_PER_SEC);
+
+        char retry;
+        printf("\n\nRetry? (Y/N) : ");
+        while (1) {
+            scanf("%c", &retry);
+            getchar();
+            if (retry == 'N') {
+                return 0;
+            }
+            else if (retry == 'Y') {
+                printf("\n\n");
+                break;
+            }
+            else {
+                printf("User inputted wrong character. Please try again.\n");
+            }
+        }
+
+    }
 }
 
 // Read designated directory
@@ -198,7 +226,6 @@ void FileSelect(char** name) {
             break;
         }
     }
-
 }
 
 // Predictor select
@@ -207,18 +234,20 @@ char PredSelect(void) {
     printf("\n#############################################################################\n");
     printf("1 : One-level Branch Predictor, 2 : Two-level Global History Branch Predictor\n");
     printf("3 : Always Taken Predictor,     4 : Always Not Taken Predictor               \n");
-    printf("            5 : Backward Taken, Forward Not Taken predictor                  \n");
+    printf("            5 : Backward Taken, Forward Not Taken Predictor                  \n");
     printf("#############################################################################\n");
-    printf("\nSelect branch predictor : ");
-    scanf("%c", &retVal);
-    getchar();
-    if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4' || retVal == '5') {
-        return retVal;
+    while (1) {
+        printf("\nSelect branch predictor : ");
+        scanf("%c", &retVal);
+        getchar();
+        if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4' || retVal == '5') {
+            return retVal;
+        }
+        else {
+            printf("User inputted wrong number. Please try again.\n");
+        }
     }
-    else {
-        fprintf(stderr, "ERROR: PredSelect) char retVal is wrong.\n");
-        exit(EXIT_FAILURE);
-    }
+
 }
 
 // Prediction bit select
@@ -227,32 +256,52 @@ char PBSelect(void) {
     printf("\n##########################################\n");
     printf("1 : 1-bit prediction, 2 : 2-bit prediction\n");
     printf("##########################################\n");
-    printf("\nSelect prediction bit : ");
-    scanf("%c", &retVal);
-    getchar();
-    if (retVal == '1' || retVal == '2') {
-        return retVal;
+    while (1) {
+        printf("\nSelect prediction bit : ");
+        scanf("%c", &retVal);
+        getchar();
+        if (retVal == '1' || retVal == '2') {
+            return retVal;
+        }
+        else {
+            printf("User inputted wrong number. Please try again.\n");
+        }
     }
-    else {
-        fprintf(stderr, "ERROR: PBSelect) char retVal is wrong.\n");
-        exit(EXIT_FAILURE);
+}
+
+// Prediction counter select
+char CounterSelect(void) {
+    char retVal;
+    printf("\n##############################################\n");
+    printf("1 : Saturating Counter, 2 : Hysteresis Counter\n");
+    printf("##############################################\n");
+    while (1) {
+        printf("\nSelect Counter : ");
+        scanf("%c", &retVal);
+        getchar();
+        if (retVal == '1' || retVal == '2') {
+            return retVal;
+        }
+        else {
+            printf("User inputted wrong number. Please try again.\n");
+        }
     }
 }
 
 // One-level predictor
-void OnelevelPredict(const char* Predictbit) {
+void OnelevelPredict(const char* Predictbit, const char* Counter) {
     while(1) {
         if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
             return;
         }
 
         OnelevelIF(Predictbit);
-        OnelevelID(Predictbit);
+        OnelevelID(Predictbit, Counter);
         EX();
         MEM();
         WB();
         printIF(1);
-        printID(1, Predictbit);
+        printID(1, Predictbit, Counter);
         printEX();
         printMEM();
         printWB();
@@ -268,18 +317,18 @@ void OnelevelPredict(const char* Predictbit) {
 }
 
 // Gshare predictor execute
-void GsharePredict(const char* Predictbit) {
+void GsharePredict(const char* Predictbit, const char* Counter) {
     while(1) {
         if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
             return;
         }
         GshareIF(Predictbit);
-        GshareID(Predictbit);
+        GshareID(Predictbit, Counter);
         EX();
         MEM();
         WB();
         printIF(2);
-        printID(2, Predictbit);
+        printID(2, Predictbit, Counter);
         printEX();
         printMEM();
         printWB();
@@ -307,7 +356,7 @@ void AlwaysTaken(void) {
         MEM();
         WB();
         printIF(3);
-        printID(3, 0);
+        printID(3, 0, 0);
         printEX();
         printMEM();
         printWB();
@@ -335,7 +384,7 @@ void AlwaysnotTaken(void) {
         MEM();
         WB();
         printIF(4);
-        printID(4, 0);
+        printID(4, 0, 0);
         printEX();
         printMEM();
         printWB();
@@ -362,7 +411,7 @@ void BTFNT(void) {
         MEM();
         WB();
         printIF(5);
-        printID(5, 0);
+        printID(5, 0, 0);
         printEX();
         printMEM();
         printWB();
@@ -525,7 +574,7 @@ void countingFormat(void) {
     return;
 }
 
-void printFinalresult(const char* Predictor, const char* Predictbit, const char* filename) {
+void printFinalresult(const char* Predictor, const char* Predictbit, const char* filename, const char* Counter) {
     printf("\n\n===============================================================\n");
     printf("===============================================================\n");
     printf("<<<<<<<<<<<<<<<<<<<<<<<<End of execution>>>>>>>>>>>>>>>>>>>>>>>>\n");
@@ -602,7 +651,7 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
 
     printf("\n\n");
     // Print executed file name
-    printf("Selected filename : %s\n", filename);
+    printf("File name : %s\n", filename);
 
     // Calculate Branch Hit rate
     double BranchHitrate = 0;
@@ -616,23 +665,23 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
     // Print summary
     switch (*Predictor) {
         case '1' :
-            printf("Branch predictor : One-level\n");
+            printf("Branch Predictor : One-level\n");
             break;
 
         case '2' :
-            printf("Branch predictor : Gshare\n");
+            printf("Branch Predictor : Gshare\n");
             break;
 
         case '3' :
-            printf("Branch predictor : Always taken\n");
+            printf("Branch Predictor : Always taken\n");
             break;
 
         case '4' :
-            printf("Branch predictor : Always not-taken\n");
+            printf("Branch Predictor : Always not-taken\n");
             break;
 
         case '5' :
-            printf("Branch predictor : Backward Taken, Forward Not Taken\n");
+            printf("Branch Predictor : Backward Taken, Forward Not Taken\n");
             break;
     }
     switch (*Predictbit) {
@@ -640,11 +689,23 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             break;
 
         case '1' :
-            printf("Prediction bit : 1bit\n");
+            printf("Prediction Bit : 1bit\n");
             break;
 
         case '2' :
-            printf("Prediction bit : 2bit\n");
+            printf("Prediction Bit : 2bit\n");
+            break;
+    }
+    switch (*Counter) {
+        case '0' :
+            break;
+
+        case '1' :
+            printf("Counter : Saturating\n");
+            break;
+
+        case '2' :
+            printf("Counter : Hysteresis\n");
             break;
     }
     printf("Final return value R[2] = %d\n", R[2]);

@@ -152,11 +152,11 @@ void CheckBranch(uint32_t PCvalue, const char* Predictbit) {  // Check if PC is 
     }
     return;
 }
-void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit) {
+void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit, const char* Counter) {
     if (Branch) {  // beq, bne
         if (BranchPred.AddressHit[1]) {  // PC found in BTB
             if (PCBranch) {  // Branch taken
-                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit);
+                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit, Counter);
                 counting.takenBranch++;
                 if (BranchPred.Predict[1]) {  // Predicted branch taken, HIT
                     counting.PredictHitCount++;
@@ -166,7 +166,7 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const c
                 }
             }
             else {  // Branch not taken
-                PBnottaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit);
+                PBnottaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit, Counter);
                 counting.nottakenBranch++;
                 if (BranchPred.Predict[1]) {  // Predicted branch taken
                     ctrlSig.IFFlush = 1;
@@ -180,7 +180,7 @@ void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const c
         else {  // PC not found in BTB, PC = PC + 4
             BranchBufferWrite(BranchPred.instPC[1], BranchAddr, Predictbit);
             if (PCBranch) {  // Branch taken
-                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit);
+                PBtaken(BranchPred.DP[BranchPred.DPindex[1]][1], Predictbit, Counter);
                 counting.takenBranch++;
                 ctrlSig.IFFlush = 1;
             }
@@ -218,7 +218,7 @@ void BranchBufferWrite(uint32_t WritePC, uint32_t Address, const char* Predictbi
         // Substitute low frequency used branch
         BranchPred.DP[DPminindex][0] = WritePC;
 
-        if (*Predictbit == '2') {  // Two-bit predictior
+        if (*Predictbit == '2') {  // Two-bit predictor
             BranchPred.DP[DPminindex][1] = 0;
         }
         else {  // One-bit predictor
@@ -237,22 +237,29 @@ void BranchBufferWrite(uint32_t WritePC, uint32_t Address, const char* Predictbi
     BranchPred.DPsize++;
     return;
 }
-void PBtaken(uint8_t Predbit, const char* Predictbit) {  // Update prediction bit to taken
+void PBtaken(uint8_t Predbit, const char* Predictbit, const char* Counter) {  // Update prediction bit to taken
     switch (*Predictbit) {
         case '1' :  // One-bit predictor
             BranchPred.DP[BranchPred.DPindex[1]][1] =  1;  // PB = 1
             break;
 
         case '2' :  // Two-bit predictor
-            if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
-                BranchPred.DP[BranchPred.DPindex[1]][1] =  3;  // PB = 11
+            if (*Counter == '1') {  // Saturating Counter
+                if (Predbit < 3) {  // PB == 00 or 01 or 10
+                    BranchPred.DP[BranchPred.DPindex[1]][1]++;  // PB++
+                }
             }
-            else if (Predbit == 0) {  // PB == 00
-                BranchPred.DP[BranchPred.DPindex[1]][1] = 1;  // PB = 01
-            }
-            else {
-                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
-                exit(EXIT_FAILURE);
+            else {  // Hysteresis Counter
+                if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
+                    BranchPred.DP[BranchPred.DPindex[1]][1] =  3;  // PB = 11
+                }
+                else if (Predbit == 0) {  // PB == 00
+                    BranchPred.DP[BranchPred.DPindex[1]][1] = 1;  // PB = 01
+                }
+                else {
+                    fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                    exit(EXIT_FAILURE);
+                }
             }
             break;
 
@@ -262,22 +269,29 @@ void PBtaken(uint8_t Predbit, const char* Predictbit) {  // Update prediction bi
     }
     return;
 }
-void PBnottaken(uint8_t Predbit, const char* Predictbit) {  // Update prediction bit to not taken
+void PBnottaken(uint8_t Predbit, const char* Predictbit, const char* Counter) {  // Update prediction bit to not taken
     switch (*Predictbit) {
         case '1' :  // One-bit predictor
             BranchPred.DP[BranchPred.DPindex[1]][1] =  0;  // PB = 0
             break;
 
         case '2' :  // Two-bit predictor
-            if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
-                BranchPred.DP[BranchPred.DPindex[1]][1] =  0;  // PB = 00
+            if (*Counter == '1') {  // Saturating Counter
+                if (Predbit > 0) {  // PB == 11 or 10 or 01
+                    BranchPred.DP[BranchPred.DPindex[1]][1]--;  // PB--
+                }
             }
-            else if (Predbit == 3) {  // PB == 00
-                BranchPred.DP[BranchPred.DPindex[1]][1] = 2;  // PB = 10
-            }
-            else {
-                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
-                exit(EXIT_FAILURE);
+            else {  // Hysteresis Counter
+                if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
+                    BranchPred.DP[BranchPred.DPindex[1]][1] =  0;  // PB = 00
+                }
+                else if (Predbit == 3) {  // PB == 00
+                    BranchPred.DP[BranchPred.DPindex[1]][1] = 2;  // PB = 10
+                }
+                else {
+                    fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                    exit(EXIT_FAILURE);
+                }
             }
             break;
 
@@ -346,7 +360,7 @@ void GshareCheckBranch(uint32_t PCvalue, const char* Predictbit) {
     }
     return;
 }
-void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit) {
+void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit, const char* Counter) {
     if (Branch) {  // beq, bne
         BranchPred.GHR[3] = BranchPred.GHR[2];
         BranchPred.GHR[2] = BranchPred.GHR[1];
@@ -354,7 +368,7 @@ void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, c
         if (BranchPred.AddressHit[1]) {  // PC found in BTB
             if (PCBranch) {  // Branch taken
                 BranchPred.GHR[0] = 1;
-                GsharePBtaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit);
+                GsharePBtaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit, Counter);
                 counting.takenBranch++;
                 if (BranchPred.Predict[1]) {  // Predicted branch taken, HIT
                     counting.PredictHitCount++;
@@ -365,7 +379,7 @@ void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, c
             }
             else {  // Branch not taken
                 BranchPred.GHR[0] = 0;
-                GsharePBnottaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit);
+                GsharePBnottaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit, Counter);
                 counting.nottakenBranch++;
                 if (BranchPred.Predict[1]) {  // Predicted branch taken
                     ctrlSig.IFFlush = 1;
@@ -380,7 +394,7 @@ void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, c
             GshareBranchBufferWrite(BranchPred.instPC[1], BranchAddr);
             if (PCBranch) {  // Branch taken
                 BranchPred.GHR[0] = 1;
-                GsharePBtaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit);
+                GsharePBtaken(BranchPred.BHT[BranchPred.BHTindex[1]][1], Predictbit, Counter);
                 counting.takenBranch++;
                 ctrlSig.IFFlush = 1;
             }
@@ -412,22 +426,29 @@ void GshareBranchBufferWrite(uint32_t WritePC, uint32_t Address) {
     BranchPred.BTBsize++;
     return;
 }
-void GsharePBtaken(uint8_t Predbit, const char* Predictbit) {
+void GsharePBtaken(uint8_t Predbit, const char* Predictbit, const char* Counter) {
     switch (*Predictbit) {
         case '1' :  // One-bit predictor
             BranchPred.BHT[BranchPred.BHTindex[1]][1] =  1;  // PB = 1
             break;
 
         case '2' :  // Two-bit predictor
-            if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
-                BranchPred.BHT[BranchPred.BHTindex[1]][1] =  3;  // PB = 11
+            if (*Counter == '1') {  // Saturating Counter
+                if (Predbit < 3) {  // PB == 00 or 01 or 10
+                    BranchPred.BHT[BranchPred.BHTindex[1]][1]++;  // PB++
+                }
             }
-            else if (Predbit == 0) {  // PB == 00
-                BranchPred.BHT[BranchPred.BHTindex[1]][1] = 1;  // PB = 01
-            }
-            else {
-                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
-                exit(EXIT_FAILURE);
+            else {  // Hysteresis Counter
+                if (Predbit == 1 || Predbit == 2 || Predbit == 3) {  // PB == 01 or 10 or 11
+                    BranchPred.BHT[BranchPred.BHTindex[1]][1] =  3;  // PB = 11
+                }
+                else if (Predbit == 0) {  // PB == 00
+                    BranchPred.BHT[BranchPred.BHTindex[1]][1] = 1;  // PB = 01
+                }
+                else {
+                    fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                    exit(EXIT_FAILURE);
+                }
             }
             break;
 
@@ -437,22 +458,29 @@ void GsharePBtaken(uint8_t Predbit, const char* Predictbit) {
     }
     return;
 }
-void GsharePBnottaken(uint8_t Predbit, const char* Predictbit) {
+void GsharePBnottaken(uint8_t Predbit, const char* Predictbit, const char* Counter) {
     switch (*Predictbit) {
         case '1' :  // One-bit predictor
             BranchPred.BHT[BranchPred.BHTindex[1]][1] =  0;  // PB = 0
             break;
 
         case '2' :  // Two-bit predictor
-            if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
-                BranchPred.BHT[BranchPred.BHTindex[1]][1] = 0;  // PB = 00
+            if (*Counter == '1') {  // Saturating Counter
+                if (Predbit > 0) {  // PB == 11 or 10 or 01
+                    BranchPred.BHT[BranchPred.BHTindex[1]][1]--;  // PB--
+                }
             }
-            else if (Predbit == 3) {  // PB == 00
-                BranchPred.BHT[BranchPred.BHTindex[1]][1] = 2;  // PB = 10
-            }
-            else {
-                fprintf(stderr, "ERROR: Prediction bit is wrong\n");
-                exit(EXIT_FAILURE);
+            else {  // Hysteresis Counter
+                if (Predbit == 0 || Predbit == 1 || Predbit == 2) {  // PB == 00 or 01 or 10
+                    BranchPred.BHT[BranchPred.BHTindex[1]][1] = 0;  // PB = 00
+                }
+                else if (Predbit == 3) {  // PB == 00
+                    BranchPred.BHT[BranchPred.BHTindex[1]][1] = 2;  // PB = 10
+                }
+                else {
+                    fprintf(stderr, "ERROR: Prediction bit is wrong\n");
+                    exit(EXIT_FAILURE);
+                }
             }
             break;
 

@@ -76,7 +76,7 @@ void printIF(int Predictor) {
     return;
 }
 
-void printID(int Predictor, const char* Predictbit) {
+void printID(int Predictor, const char* Predictbit, const char* Counter) {
     printf("\n<<<<<<<<<<<<<<<<<<<<<ID>>>>>>>>>>>>>>>>>>>>>\n");
     if (!(debugid[1].valid)) {  // Pipeline is invalid
         printf("IF/ID pipeline is invalid\n");
@@ -168,7 +168,7 @@ void printID(int Predictor, const char* Predictbit) {
     }
     else {
         printIDforward();
-        printUpdateBTB(&Predictor, Predictbit);
+        printUpdateBTB(&Predictor, Predictbit, Counter);
     }
 
     printf("**********************************************\n");
@@ -413,7 +413,7 @@ void printEXforward(void) {
     return;
 }
 
-void printUpdateBTB(const int* Predictor, const char* Predictbit) {
+void printUpdateBTB(const int* Predictor, const char* Predictbit, const char* Counter) {
     if (debugid[1].Branch) {
         if (debugid[1].AddressHit) {
             if (debugid[1].PCBranch) {
@@ -434,7 +434,7 @@ void printUpdateBTB(const int* Predictor, const char* Predictbit) {
                     if (*Predictor == 2) {
                         printf("<Update GHR[0] to 1>\n");
                     }
-                    printPBtaken(Predictor, Predictbit);
+                    printPBtaken(Predictor, Predictbit, Counter);
                 }
             }
 
@@ -456,7 +456,7 @@ void printUpdateBTB(const int* Predictor, const char* Predictbit) {
                     if (*Predictor == 2) {
                         printf("<Update GHR[0] to 0>\n");
                     }
-                    printPBnottaken(Predictor, Predictbit);
+                    printPBnottaken(Predictor, Predictbit, Counter);
                 }
             }
         }
@@ -472,7 +472,7 @@ void printUpdateBTB(const int* Predictor, const char* Predictbit) {
                     if (*Predictor == 2) {
                         printf("<Update GHR[0] to 1>\n");
                     }
-                    printPBtaken(Predictor, Predictbit);
+                    printPBtaken(Predictor, Predictbit, Counter);
                 }
                 else if (*Predictor == 4) {
                     printf("Branch taken, predicted branch not taken.\nBranch prediction not HIT.\n");
@@ -500,18 +500,31 @@ void printUpdateBTB(const int* Predictor, const char* Predictbit) {
     return;
 }
 
-void printPBtaken(const int* Predictor, const char* Predictbit) {
+void printPBtaken(const int* Predictor, const char* Predictbit, const char* Counter) {
     switch (*Predictbit) {
         case '1' :
             printf("<Update PB to 1>\n");
             break;
 
         case '2' :
-            if (debugid[1].PB == 1 || debugid[1].PB == 2 || debugid[1].PB == 3) {
-                printf("<Update PB to 3>\n");
+            if (*Counter == '1') {
+                if (debugid[1].PB == 3 || debugid[1].PB == 2) {
+                    printf("<Update PB to 3>\n");
+                }
+                else if (debugid[1].PB == 1) {
+                    printf("<Update PB to 2>\n");
+                }
+                else {
+                    printf("<Update PB to 1>\n");
+                }
             }
-            else if (debugid[1].PB == 0) {
-                printf("<Update PB to 1>\n");
+            else if (*Counter == '2') {
+                if (debugid[1].PB == 1 || debugid[1].PB == 2 || debugid[1].PB == 3) {
+                    printf("<Update PB to 3>\n");
+                }
+                else {
+                    printf("<Update PB to 1>\n");
+                }
             }
             break;
     }
@@ -532,17 +545,30 @@ void printPBtaken(const int* Predictor, const char* Predictbit) {
     return;
 }
 
-void printPBnottaken(const int* Predictor, const char* Predictbit) {
+void printPBnottaken(const int* Predictor, const char* Predictbit, const char* Counter) {
     switch (*Predictbit) {
         case '1' :
             printf("<Update PB to 0>\n");
             break;
         case '2' :
-            if (debugid[1].PB == 0 || debugid[1].PB == 1 || debugid[1].PB == 2) {
-                printf("<Update PB to 0>\n");
+            if (*Counter == '1') {
+                if (debugid[1].PB == 0 || debugid[1].PB == 1) {
+                    printf("<Update PB to 0>\n");
+                }
+                else if (debugid[1].PB == 2) {
+                    printf("<Update PB to 1>\n");
+                }
+                else {
+                    printf("<Update PB to 2>\n");
+                }
             }
-            else if (debugid[1].PB == 3) {
-                printf("<Update PB to 2>\n");
+            else if (*Counter == '2') {
+                if (debugid[1].PB == 0 || debugid[1].PB == 1 || debugid[1].PB == 2) {
+                    printf("<Update PB to 0>\n");
+                }
+                else {
+                    printf("<Update PB to 2>\n");
+                }
             }
             break;
     }

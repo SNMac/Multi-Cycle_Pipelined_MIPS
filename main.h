@@ -23,18 +23,23 @@ void FileSelect(char** name);
 char PredSelect(void);
 char PBSelect(void);
 char CounterSelect(void);
-void OnelevelPredict(const char* Predictbit);
-void GsharePredict(const char* Predictbit);
+
+void OnelevelPredict(const char* Predictbit, const char* Counter);
+void GsharePredict(const char* Predictbit, const char* Counter);
 void AlwaysTaken(void);
 void AlwaysnotTaken(void);
 void BTFNT(void);
+
 void Firstinit(const char* Predictbit);
 void printnextPC(void);
+
 void OnelevelPipelineHandsOver(void);
 void GsharePipelineHandsOver(void);
 void AlwaysTakenPipelineHandsOver(void);
 void BTFNTPipelineHandsOver(void);
+
 void countingFormat(void);
-void printFinalresult(const char* Predictor, const char* Predictbit, const char* filename);
+void printFinalresult(const char* Predictor, const char* Predictbit,
+                      const char* filename, const char* Counter);
 
 #endif //CAMP_PROJECT3_MAIN_H

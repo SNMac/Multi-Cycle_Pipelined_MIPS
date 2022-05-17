@@ -130,16 +130,16 @@ uint32_t DataMem(uint32_t Addr, uint32_t Writedata, bool MemRead, bool MemWrite)
 /* Branch Predictor */
 // [One-level branch predictor]
 void CheckBranch(uint32_t PCvalue, const char* Predictbit);  // Check branch in IF stage
-void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit);  // Update BTB
+void UpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit, const char* Counter);  // Update BTB
 void BranchBufferWrite(uint32_t WritePC, uint32_t Address, const char* Predictbit);  // Write BranchAddr to BTB
-void PBtaken(uint8_t Predbit, const char* Predictbit);  // Update Prediction bit to taken
-void PBnottaken(uint8_t Predbit, const char* Predictbit);  // Update Prediction bit to not taken
+void PBtaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to taken
+void PBnottaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to not taken
 // [Gshare branch predictor]
 void GshareCheckBranch(uint32_t PCvaluePCvalue, const char* Predictbit);  // Check branch in IF stage
-void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit);  // Update BTB
+void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit, const char* Counter);  // Update BTB
 void GshareBranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
-void GsharePBtaken(uint8_t Predbit, const char* Predictbit);  // Update Prediction bit to taken
-void GsharePBnottaken(uint8_t Predbit, const char* Predictbit);  // Update Prediction bit to not taken
+void GsharePBtaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to taken
+void GsharePBnottaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to not taken
 // [Always taken predictor]
 void AlwaysTakenCheckBranch(uint32_t PCvalue);  // Check branch in IF stage
 void AlwaysTakenUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr);  // Update BTB
