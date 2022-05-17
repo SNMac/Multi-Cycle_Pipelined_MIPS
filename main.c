@@ -94,6 +94,8 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        Firstinit(&PredictionBitSelector);
+
         FILE* fp = fopen(filename, "rb");
         if (fp == NULL) {
             perror("ERROR");
@@ -117,8 +119,6 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < index; i++) {
             printf("Memory [%d] : 0x%08x\n", i, Memory[i]);
         }
-
-        Firstinit(&PredictionBitSelector);
 
         switch (PredictorSelector) {
             case '1' :
@@ -216,7 +216,7 @@ void FileSelect(char** name) {
     printf("###################################################\n");
     while (1) {
         printf("\nSelect filename : ");
-        scanf("%d", &filenameSelector);
+        scanf(" %d", &filenameSelector);
         getchar();
         if (filenameSelector < 1 || files[filenameSelector - 1] == NULL) {
             printf("User inputted wrong number. Please try again.\n");
@@ -238,7 +238,7 @@ char PredSelect(void) {
     printf("#############################################################################\n");
     while (1) {
         printf("\nSelect branch predictor : ");
-        scanf("%c", &retVal);
+        scanf(" %c", &retVal);
         getchar();
         if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4' || retVal == '5') {
             return retVal;
@@ -258,7 +258,7 @@ char PBSelect(void) {
     printf("##########################################\n");
     while (1) {
         printf("\nSelect prediction bit : ");
-        scanf("%c", &retVal);
+        scanf(" %c", &retVal);
         getchar();
         if (retVal == '1' || retVal == '2') {
             return retVal;
@@ -277,7 +277,7 @@ char CounterSelect(void) {
     printf("##############################################\n");
     while (1) {
         printf("\nSelect Counter : ");
-        scanf("%c", &retVal);
+        scanf(" %c", &retVal);
         getchar();
         if (retVal == '1' || retVal == '2') {
             return retVal;
@@ -428,7 +428,9 @@ void BTFNT(void) {
 
 void Firstinit(const char* Predictbit) {
     memset(&PC, 0, sizeof(PROGRAM_COUNTER));
+    memset(&Memory, 0, sizeof(Memory));
     memset(&BranchPred, 0, sizeof(BRANCH_PREDICT));
+    memset(&counting, 0, sizeof(COUNTING));
     switch (*Predictbit) {
         case '0' :  // Always taken or  not taken
             break;
