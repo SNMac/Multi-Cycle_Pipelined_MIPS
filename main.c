@@ -127,8 +127,12 @@ int main(int argc, char* argv[]) {
             AlwaysnotTaken();
             break;
 
+        case '5' :
+            BTFNT();
+            break;
+
         default :
-            fprintf(stderr, "ERROR: Predictor select number is wrong.\n");
+            fprintf(stderr, "ERROR: main) char PredictorSelector is wrong.\n");
             exit(EXIT_FAILURE);
     }
 
@@ -140,6 +144,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+// Read designated directory
 void ReadDirectory(char** files) {
     int index = 0;
     DIR *dir;
@@ -174,15 +179,12 @@ void ReadDirectory(char** files) {
 }
 
 // Filename select
-void FileSelect(char** file) {
+void FileSelect(char** name) {
     char* files[10];
     memset(files, 0, sizeof(files));
     printf("###################################################\n");
     ReadDirectory(files);
     int filenameSelector;
-//    printf("1 : simple.bin,  2 : simple2.bin,  3 : simple3.bin\n");
-//    printf("4 : simple4.bin, 5 : fib.bin,      6 : fib_jalr.bin\n");
-//    printf("7 : gcd.bin,     8 : input4.bin\n");
     printf("###################################################\n");
     while (1) {
         printf("\nSelect filename : ");
@@ -192,48 +194,11 @@ void FileSelect(char** file) {
             printf("User inputted wrong number. Please try again.\n");
         }
         else {
-            *file = files[filenameSelector - 1];
+            *name = files[filenameSelector - 1];
             break;
         }
     }
-//
-//    switch (filenameSelector) {
-//        case 1 :
-//            *file = files[0];
-//            break;
-//
-//        case 2 :
-//            *file = files[1];
-//            break;
-//
-//        case 3 :
-//            *file = files[2];
-//            break;
-//
-//        case 4 :
-//            *file = files[3];
-//            break;
-//
-//        case 5 :
-//            *file = files[4];
-//            break;
-//
-//        case 6 :
-//            *file = files[5];
-//            break;
-//
-//        case 7 :
-//            *file = files[6];
-//            break;
-//
-//        case 8 :
-//            *file = files[7];
-//            break;
-//
-//        default :
-//            fprintf(stderr, "ERROR: Wrong filename select number\n");
-//            break;
-//    }
+
 }
 
 // Predictor select
@@ -242,15 +207,16 @@ char PredSelect(void) {
     printf("\n#############################################################################\n");
     printf("1 : One-level Branch Predictor, 2 : Two-level Global History Branch Predictor\n");
     printf("3 : Always Taken Predictor,     4 : Always Not Taken Predictor               \n");
+    printf("            5 : Backward Taken, Forward Not Taken predictor                  \n");
     printf("#############################################################################\n");
     printf("\nSelect branch predictor : ");
     scanf("%c", &retVal);
     getchar();
-    if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4') {
+    if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4' || retVal == '5') {
         return retVal;
     }
     else {
-        fprintf(stderr, "ERROR: Wrong branch select number\n");
+        fprintf(stderr, "ERROR: PredSelect) char retVal is wrong.\n");
         exit(EXIT_FAILURE);
     }
 }
@@ -268,7 +234,7 @@ char PBSelect(void) {
         return retVal;
     }
     else {
-        fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+        fprintf(stderr, "ERROR: PBSelect) char retVal is wrong.\n");
         exit(EXIT_FAILURE);
     }
 }
@@ -348,7 +314,7 @@ void AlwaysTaken(void) {
         printnextPC();
 
         countingFormat();
-        OnelevelPipelineHandsOver();
+        AlwaysTakenPipelineHandsOver();
         DebugPipelineHandsOver();
 
         counting.cycle++;
@@ -384,6 +350,33 @@ void AlwaysnotTaken(void) {
     }
 }
 
+void BTFNT(void) {
+    while(1) {
+        if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
+            return;
+        }
+
+        BTFNTIF();
+        BTFNTID();
+        EX();
+        MEM();
+        WB();
+        printIF(5);
+        printID(5, 0);
+        printEX();
+        printMEM();
+        printWB();
+        printnextPC();
+
+        countingFormat();
+        BTFNTPipelineHandsOver();
+        DebugPipelineHandsOver();
+
+        counting.cycle++;
+        printf("\n================================ CC %d ================================\n", counting.cycle);
+    }
+}
+
 void Firstinit(const char* Predictbit) {
     memset(&PC, 0, sizeof(PROGRAM_COUNTER));
     memset(&BranchPred, 0, sizeof(BRANCH_PREDICT));
@@ -412,7 +405,7 @@ void Firstinit(const char* Predictbit) {
             break;
 
         default :
-            fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
+            fprintf(stderr, "ERROR: Firstinit) const char* Predictbit is wrong.\n");
             exit(EXIT_FAILURE);
     }
     PC.valid = 1;
@@ -472,6 +465,41 @@ void GsharePipelineHandsOver(void) {
     return;
 }
 
+void AlwaysTakenPipelineHandsOver(void) {
+    if (!hzrddetectSig.IFIDnotWrite){
+        ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
+    }
+
+    if (!hzrddetectSig.BTBnotWrite) {
+        BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
+        BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
+        BranchPred.instPC[1] = BranchPred.instPC[0];
+    }
+
+    idex[1] = idex[0];  // ID/EX pipeline hands data to EX
+    exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM
+    memwb[1] = memwb[0];  // MEM/WB pipeline hands data to WB
+    return;
+}
+
+void BTFNTPipelineHandsOver(void) {
+    if (!hzrddetectSig.IFIDnotWrite){
+        ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
+    }
+
+    if (!hzrddetectSig.BTBnotWrite) {
+        BranchPred.Predict[1] = BranchPred.Predict[0];
+        BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
+        BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
+        BranchPred.instPC[1] = BranchPred.instPC[0];
+    }
+
+    idex[1] = idex[0];  // ID/EX pipeline hands data to EX
+    exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM
+    memwb[1] = memwb[0];  // MEM/WB pipeline hands data to WB
+    return;
+}
+
 void countingFormat(void) {
     if (!hzrddetectSig.IFIDnotWrite){
         if (ifid[1].valid) {
@@ -489,7 +517,7 @@ void countingFormat(void) {
                     break;
 
                 default :
-                    fprintf(stderr, "ERROR: Instruction has wrong format.\n");
+                    fprintf(stderr, "ERROR: countingFormat) counting.format is wrong.\n");
                     exit(EXIT_FAILURE);
             }
         }
@@ -557,8 +585,18 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             // Print nothing
             break;
 
+        case '5' :
+            // Print BTB
+            printf("\n\n################# Branch Target Buffer #################\n");
+            printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");
+            for (int i = 0; i < BranchPred.BTBsize; i++) {
+                printf("## 0x%08x ##    0x%08x    ## %16d ##\n", BranchPred.BTB[i][0], BranchPred.BTB[i][1], BranchPred.BTB[i][2]);
+            }
+            printf("########################################################\n");
+            break;
+
         default :
-            fprintf(stderr, "ERROR: Wrong predictor select number\n");
+            fprintf(stderr, "ERROR: printFinalresult) const char* Predictor is wrong.\n");
             exit(EXIT_FAILURE);
     }
 
@@ -592,6 +630,10 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
         case '4' :
             printf("Branch predictor : Always not-taken\n");
             break;
+
+        case '5' :
+            printf("Branch predictor : Backward Taken, Forward Not Taken\n");
+            break;
     }
     switch (*Predictbit) {
         case '0' :
@@ -617,5 +659,6 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
     printf("# of not taken branches : %d\n", counting.nottakenBranch);
     printf("# of branch prediction HIT : %d\n", counting.PredictHitCount);
     printf("Hit rate of branch prediction : %.2lf %%\n", BranchHitrate);
+    printf("# of stalling : %d\n", counting.stall);
     return;
 }

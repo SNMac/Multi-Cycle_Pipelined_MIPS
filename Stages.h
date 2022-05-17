@@ -12,10 +12,12 @@ void OnelevelIF(const char* Predictbit);  // Instruction Fetch (One Level Predic
 void OnelevelID(const char* Predictbit);  // Instruction Decode (One Level Predictor)
 void GshareIF(const char* Predictbit);  // Instruction Fetch (Gshare Predictor)
 void GshareID(const char* Predictbit);  // Instruction Decode (Gshare Predictor)
-void AlwaysTakenIF(void);  // Instruction Fetch (Always taken)
-void AlwaysTakenID(void);  // Instruction Decode (Always taken)
-void AlwaysnotTakenIF(void);  // Instruction Decode (Always not taken)
-void AlwaysnotTakenID(void);  // Instruction Decode (Always not taken)
+void AlwaysTakenIF(void);  // Instruction Fetch (Always taken predictor)
+void AlwaysTakenID(void);  // Instruction Decode (Always taken predictor)
+void AlwaysnotTakenIF(void);  // Instruction Fetch (Always not taken predictor)
+void AlwaysnotTakenID(void);  // Instruction Decode (Always not taken predictor)
+void BTFNTIF(void);  // Instruction Fetch (Backward Taken, Forward Not Taken predictor)
+void BTFNTID(void);  // Instruction Decode (Backward Taken, Forward Not Taken predictor)
 void EX(void);  // EXecute
 void MEM(void);  // MEMory access
 void WB(void);  // Write Back
