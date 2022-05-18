@@ -19,7 +19,7 @@ typedef struct _COUNTING {
 }COUNTING;
 
 void FileSelect(char** name);
-void ReadDirectory(char** files);
+void ReadDirectory(char** files, char** directory);
 char PredSelect(void);
 char PBSelect(void);
 char CounterSelect(void);

@@ -1132,6 +1132,7 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
         hzrddetectSig.BTBnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
     }
+    // EXMEM branch(jump) hazard
     if (EXMEMMemRead && (BEQ | BNE | Jump) && ((EXMEMWritereg == IFIDrs) || (EXMEMWritereg == IFIDrt))) {
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;

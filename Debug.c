@@ -164,7 +164,12 @@ void printID(int Predictor, const char* Predictbit, const char* Counter) {
     printf("%s\n", debugid[1].instprint);
 
     if (hzrddetectSig.ControlNOP) {
-        printf("!!Hazard detected. Adding NOP!!\n");
+        if (hzrddetectSig.BTBnotWrite) {
+            printf("!!Branch(jump) hazard detected. Adding NOP!!\n");
+        }
+        else {
+            printf("!!Load-use hazard detected. Adding NOP!!\n");
+        }
     }
     else {
         printIDforward();

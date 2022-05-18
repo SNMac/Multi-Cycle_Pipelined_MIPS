@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <limits.h>
 #include <time.h>
 
 #include "main.h"
@@ -13,7 +14,7 @@
 #include "Stages.h"
 #include "Debug.h"
 
-#define DIRECTORY "../testbin/"
+#define DIRECTORY "/testbin/"
 #define SAFE_FREE(p) {if(p!=NULL){free(p);p=NULL;}}
 COUNTING counting;  // for result counting
 
@@ -37,11 +38,11 @@ extern DEBUGWB debugwb[2];
 
 int main(void) {
     while (1) {
-        char* filename = malloc(sizeof(char) * 20);
-        strcat(filename, DIRECTORY);
-        char PredictorSelector;
+        char* filename = malloc(sizeof(char) * PATH_MAX);
+        memset(filename, 0, sizeof(&filename));
+        char PredictorSelector = '0';
         char PredictionBitSelector = '0';
-        char CounterSelector;
+        char CounterSelector = '0';
 
         FileSelect(&filename);
         PredictorSelector = PredSelect();
@@ -137,11 +138,10 @@ int main(void) {
 void FileSelect(char** name) {
     char* files[10];
     memset(files, 0, sizeof(files));
-    printf("Read *.bin file from designated directory : %s\n", DIRECTORY);
-    printf("###################################################\n");
-    ReadDirectory(files);
+
+    ReadDirectory(files, name);
+
     int filenameSelector;
-    printf("###################################################\n");
     while (1) {
         printf("\nSelect filename : ");
         scanf(" %d", &filenameSelector);
@@ -151,37 +151,58 @@ void FileSelect(char** name) {
         }
         else {
             strcat(*name, files[filenameSelector - 1]);
+            printf("%s\n", *name);
             break;
         }
     }
 }
 
 // Read designated directory
-void ReadDirectory(char** files) {
+void ReadDirectory(char** files, char** directory) {
     int index = 0;
     int name_count;
     char* ext;
     struct dirent** name_list = NULL;
-    name_count = scandir(DIRECTORY, &name_list, NULL, alphasort);
+
+    char buf[PATH_MAX];
+    char* res = realpath(".", buf);  // Get execution file's absolute directory
+    char* upperdirect;
+    printf("######################################################################\n");
+    if (res) {
+        strcat(*directory, buf);
+        upperdirect = strrchr(*directory, '/');  // Cut last directory to get upper directory
+        *upperdirect = '\0';
+        strcat(*directory, DIRECTORY);  // access to testbin folder (from upper directory)
+        printf("Read *.bin file from designated directory : \n%s\n", *directory);
+        printf("======================================================================\n");
+
+    }
+    else {
+        perror("realpath");
+        exit(EXIT_FAILURE);
+    }
+
+    name_count = scandir(*directory, &name_list, NULL, alphasort);  // Get files' name and sort them in alphabetical order
     for (int i = 0; i < name_count; i++) {
-        ext = strchr(name_list[i]->d_name, '.');
+        ext = strchr(name_list[i]->d_name, '.');  // Get extension from file
         if (ext == NULL) {
             continue;
         }
-        if (strcmp(ext, ".bin") == 0) {
-            if (index != 0 && index % 3 != 0) {
+        if (strcmp(ext, ".bin") == 0) {  // If file's name has .bin extension
+            if (index != 0 && index % 4 != 0) {
                 printf(", ");
             }
-            files[index] = name_list[i]->d_name;
+            files[index] = name_list[i]->d_name;  // Save it to array
             printf("%d : %s", index + 1, files[index]);
             index++;
-            if (index % 3 == 0) {
+            if (index % 4 == 0) {
                 printf("\n");
             }
         }
         SAFE_FREE(name_list[i]);
     }
     printf("\n");
+    printf("######################################################################\n");
     SAFE_FREE(name_list);
 }
 
@@ -204,7 +225,6 @@ char PredSelect(void) {
             printf("User inputted wrong number. Please try again.\n");
         }
     }
-
 }
 
 // Prediction bit select
