@@ -117,7 +117,9 @@ void OnelevelID(const char* Predictbit, const char* Counter) {
 
     // Update branch result to BTB
     debugid[1].PB = BranchPred.DP[BranchPred.DPindex[1]][1];
-    UpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit, Counter);
+    if (!hzrddetectSig.BTBnotWrite) {
+        UpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit, Counter);
+    }
 
     // Select PC address
     bool PCtarget = BranchPred.AddressHit[0] & BranchPred.Predict[0];
@@ -559,6 +561,7 @@ void BTFNTID(void) {
                      idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, Branch, ctrlSig.Jump[1]);
     if (hzrddetectSig.ControlNOP) {  // adding nop
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+        Branch = 0;
     }
 
     // Avoid ID-WB hazard
