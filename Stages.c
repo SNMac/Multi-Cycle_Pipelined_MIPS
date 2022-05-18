@@ -242,7 +242,9 @@ void GshareID(const char* Predictbit, const char* Counter) {
 
     // Update branch result to BTB
     debugid[1].PB = BranchPred.BHT[BranchPred.BHTindex[1]][1];
-    GshareUpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit, Counter);
+    if (!hzrddetectSig.BTBnotWrite) {
+        GshareUpdateBranchBuffer(Branch, PCBranch, BranchAddr, Predictbit, Counter);
+    }
 
 
     // Select PC address
@@ -362,7 +364,9 @@ void AlwaysTakenID(void) {
     uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
 
     // Update branch result to BTB
-    AlwaysTakenUpdateBranchBuffer(Branch, PCBranch, BranchAddr);
+    if (!hzrddetectSig.BTBnotWrite) {
+        AlwaysTakenUpdateBranchBuffer(Branch, PCBranch, BranchAddr);
+    }
 
     // Select PC address
     bool PCtarget = BranchPred.AddressHit[0];
@@ -595,7 +599,9 @@ void BTFNTID(void) {
     uint32_t JumpAddr = (ifid[1].PCadd4 & 0xf0000000) | (inst.address << 2);
 
     // Update branch result to BTB
-    BTFNTUpdateBranchBuffer(Branch, PCBranch, BranchAddr);
+    if(!hzrddetectSig.BTBnotWrite) {
+        BTFNTUpdateBranchBuffer(Branch, PCBranch, BranchAddr);
+    }
 
     // Select PC address
     bool PCtarget = BranchPred.AddressHit[0] & BranchPred.Predict[0];
