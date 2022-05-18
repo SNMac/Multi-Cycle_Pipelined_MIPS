@@ -36,10 +36,17 @@ extern DEBUGEX debugex[2];
 extern DEBUGMEM debugmem[2];
 extern DEBUGWB debugwb[2];
 
-int main(void) {
+// This program reads *.bin files from testbin folder
+// It must be located in upper directory of executable file
+// for example)
+// Location of executable file : User/Project/
+// Location of testbin folder : User/
+
+int main(int argc, char* argv[]) {
     while (1) {
         char* filename = malloc(sizeof(char) * PATH_MAX);
         memset(filename, 0, sizeof(&filename));
+        strcat(filename, argv[0]);
         char PredictorSelector = '0';
         char PredictionBitSelector = '0';
         char CounterSelector = '0';
@@ -130,7 +137,6 @@ int main(void) {
                 printf("User inputted wrong character. Please try again.\n");
             }
         }
-
     }
 }
 
@@ -151,7 +157,7 @@ void FileSelect(char** name) {
         }
         else {
             strcat(*name, files[filenameSelector - 1]);
-            printf("%s\n", *name);
+            printf("%s\n", files[filenameSelector - 1]);
             break;
         }
     }
@@ -164,23 +170,17 @@ void ReadDirectory(char** files, char** directory) {
     char* ext;
     struct dirent** name_list = NULL;
 
-    char buf[PATH_MAX];
-    char* res = realpath(".", buf);  // Get execution file's absolute directory
     char* upperdirect;
     printf("######################################################################\n");
-    if (res) {
-        strcat(*directory, buf);
-        upperdirect = strrchr(*directory, '/');  // Cut last directory to get execution file's upper directory
-        *upperdirect = '\0';
-        strcat(*directory, DIRECTORY);  // access to testbin folder of upper directory
-        printf("Read *.bin file from designated directory : \n%s\n", *directory);
-        printf("======================================================================\n");
 
-    }
-    else {
-        perror("realpath");
-        exit(EXIT_FAILURE);
-    }
+    // Cut last directory to get execution file's upper directory
+    upperdirect = strrchr(*directory, '/'); *upperdirect = '\0';
+    upperdirect = strrchr(*directory, '/'); *upperdirect = '\0';
+
+    strcat(*directory, DIRECTORY);  // access to testbin folder of upper directory
+    printf("Read *.bin file from designated directory : \n%s\n", *directory);
+    printf("======================================================================\n");
+
 
     name_count = scandir(*directory, &name_list, NULL, alphasort);  // Get files' name and sort them in alphabetical order
     for (int i = 0; i < name_count; i++) {
