@@ -170,9 +170,9 @@ void ReadDirectory(char** files, char** directory) {
     printf("######################################################################\n");
     if (res) {
         strcat(*directory, buf);
-        upperdirect = strrchr(*directory, '/');  // Cut last directory to get upper directory
+        upperdirect = strrchr(*directory, '/');  // Cut last directory to get execution file's upper directory
         *upperdirect = '\0';
-        strcat(*directory, DIRECTORY);  // access to testbin folder (from upper directory)
+        strcat(*directory, DIRECTORY);  // access to testbin folder of upper directory
         printf("Read *.bin file from designated directory : \n%s\n", *directory);
         printf("======================================================================\n");
 
