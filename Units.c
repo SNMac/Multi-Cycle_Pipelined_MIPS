@@ -1108,16 +1108,16 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
     }
 }
 
-void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBRegWrite) {
+void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBMemRead) {
     memset(&memfwrdSig, 0, sizeof(MEM_FORWARD_SIGNAL));
-    if (MEMWBRegWrite && EXMEMMemWrite && (MEMWBWritereg != 0) && (MEMWBWritereg == EXMEMrt)) {
+    if (MEMWBMemRead && EXMEMMemWrite && (MEMWBWritereg != 0) && (MEMWBWritereg == EXMEMrt)) {
         memfwrdSig.MEMForward = 1;
     }
 }
 
 // (Hazard detection unit)
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
-                    bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump) {
+                    bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool Branch, bool Jump) {
     memset(&hzrddetectSig, 0, sizeof(HAZARD_DETECTION_SIGNAL));
     // Load-use hazard
     if (IDEXMemRead && ((IDEXrt == IFIDrs) || (IDEXrt == IFIDrt))) {
@@ -1126,14 +1126,14 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
         hzrddetectSig.ControlNOP = 1;
     }
     // IDEX branch(jump) hazard
-    if (IDEXRegWrite && (BEQ | BNE | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
+    if (IDEXRegWrite && (Branch | Jump) && ((IDEXWritereg == IFIDrs) || (IDEXWritereg == IFIDrt))) {
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.BTBnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
     }
     // EXMEM branch(jump) hazard
-    if (EXMEMMemRead && (BEQ | BNE | Jump) && ((EXMEMWritereg == IFIDrs) || (EXMEMWritereg == IFIDrt))) {
+    if (EXMEMMemRead && (Branch | Jump) && ((EXMEMWritereg == IFIDrs) || (EXMEMWritereg == IFIDrt))) {
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;
         hzrddetectSig.BTBnotWrite = 1;

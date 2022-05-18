@@ -70,7 +70,7 @@ typedef struct _MEMWB {  // MEM/WB pipeline
     uint32_t ALUresult;
     uint32_t upperimm;
     uint8_t Writereg;
-    bool MemtoReg[2], RegWrite;
+    bool MemtoReg[2], RegWrite, MemRead;
 }MEMWB;
 
 /* Control signals */
@@ -163,9 +163,9 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
                  bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]);  // Forward unit (EX, MEM hazard)
 void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
                    bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]);  // Branch Forward unit (ID hazard by beq, bne)
-void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBRegWrite);
+void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBMemRead);
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
-                    bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool BEQ, bool BNE, bool Jump);  // Hazard detection unit
+                    bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool Branch, bool Jump);  // Hazard detection unit
 
 /* Select ALU operation */
 char Rformat(uint8_t funct);  // select ALU operation by funct (R-format)

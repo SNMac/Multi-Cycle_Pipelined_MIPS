@@ -77,9 +77,10 @@ void OnelevelID(const char* Predictbit, const char* Counter) {
     CtrlUnit(inst.opcode, inst.funct);
 
     // Load-use, branch hazard detect
+    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
     HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
-                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, Branch, ctrlSig.Jump[1]);
     if (hzrddetectSig.ControlNOP) {  // adding nop
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     }
@@ -103,7 +104,6 @@ void OnelevelID(const char* Predictbit, const char* Counter) {
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
-    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
@@ -200,9 +200,10 @@ void GshareID(const char* Predictbit, const char* Counter) {
     CtrlUnit(inst.opcode, inst.funct);
 
     // Load-use, branch hazard detect
+    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
     HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
-                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, Branch, ctrlSig.Jump[1]);
     if (hzrddetectSig.ControlNOP) {  // adding nop
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     }
@@ -226,7 +227,6 @@ void GshareID(const char* Predictbit, const char* Counter) {
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
-    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
@@ -321,9 +321,10 @@ void AlwaysTakenID(void) {
     CtrlUnit(inst.opcode, inst.funct);
 
     // Load-use, branch hazard detect
+    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
     HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
-                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, Branch, ctrlSig.Jump[1]);
     if (hzrddetectSig.ControlNOP) {  // adding nop
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     }
@@ -347,7 +348,6 @@ void AlwaysTakenID(void) {
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
-    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
@@ -439,9 +439,10 @@ void AlwaysnotTakenID() {
     CtrlUnit(inst.opcode, inst.funct);
 
     // Load-use, branch hazard detect
+    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
     HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
-                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, Branch, ctrlSig.Jump[1]);
     if (hzrddetectSig.ControlNOP) {  // adding nop
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     }
@@ -465,7 +466,6 @@ void AlwaysnotTakenID() {
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
-    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
@@ -553,9 +553,10 @@ void BTFNTID(void) {
     CtrlUnit(inst.opcode, inst.funct);
 
     // Load-use, branch hazard detect
+    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     uint8_t IDEXWritereg = MUX_3(idex[1].rt, idex[1].rd, 31, idex[1].RegDst);
     HazardDetectUnit(inst.rs, inst.rt, idex[1].rt, IDEXWritereg, exmem[1].Writereg,
-                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, ctrlSig.BEQ, ctrlSig.BNE, ctrlSig.Jump[1]);
+                     idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, Branch, ctrlSig.Jump[1]);
     if (hzrddetectSig.ControlNOP) {  // adding nop
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
     }
@@ -579,7 +580,6 @@ void BTFNTID(void) {
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
-    bool Branch = ctrlSig.BEQ | ctrlSig.BNE;
     bool PCBranch = (ctrlSig.BNE & !Equal) | (ctrlSig.BEQ & Equal);
 
     // Extending immediate
@@ -688,7 +688,7 @@ void MEM(void) {
         return;
     }
 
-    MEMForwardUnit(exmem[1].rt, memwb[1].Writereg, exmem[1].MemWrite, memwb[1].RegWrite);
+    MEMForwardUnit(exmem[1].rt, memwb[1].Writereg, exmem[1].MemWrite, memwb[1].MemRead);
     uint32_t MemWriteDataMUX = MUX(exmem[1].ForwardBMUX, MemtoRegMUX, memfwrdSig.MEMForward);
     // Memory access
     uint32_t Readdata = DataMem(exmem[1].ALUresult, MemWriteDataMUX,
@@ -701,7 +701,7 @@ void MEM(void) {
 
     // Save control signals to pipeline
     memwb[0].MemtoReg[0] = exmem[1].MemtoReg[0]; memwb[0].MemtoReg[1] = exmem[1].MemtoReg[1];
-    memwb[0].RegWrite = exmem[1].RegWrite;
+    memwb[0].RegWrite = exmem[1].RegWrite; memwb[0].MemRead = exmem[1].MemRead;
 
     // For visible state
     debugmem[1].MemRead = exmem[1].MemRead; debugmem[1].MemWrite = exmem[1].MemWrite;
@@ -716,6 +716,7 @@ void WB(void) {
     }
     // For visible state
     debugwb[1].RegWrite = memwb[1].RegWrite; debugwb[1].Writereg = memwb[1].Writereg;
+    debugwb[1].MemRead = memwb[1].MemRead;
     return;
 }
 

@@ -253,7 +253,7 @@ char CounterSelect(void) {
     printf("1 : Saturating Counter, 2 : Hysteresis Counter\n");
     printf("##############################################\n");
     while (1) {
-        printf("\nSelect Counter : ");
+        printf("\nSelect counter : ");
         scanf(" %c", &retVal);
         getchar();
         if (retVal == '1' || retVal == '2') {
