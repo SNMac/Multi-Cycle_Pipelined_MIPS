@@ -56,7 +56,6 @@ typedef struct _DEBUGWB {
     bool ControlNOP;
     bool RegWrite;
     bool Writereg;
-    bool MemRead;
     uint32_t WBPC;
     uint32_t WBinst;
     char instprint[100];

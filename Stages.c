@@ -729,7 +729,6 @@ void WB(void) {
     }
     // For visible state
     debugwb[1].RegWrite = memwb[1].RegWrite; debugwb[1].Writereg = memwb[1].Writereg;
-    debugwb[1].MemRead = memwb[1].MemRead;
     return;
 }
 

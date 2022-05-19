@@ -587,16 +587,16 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
 
         case '2' :  // Gshare predictor
             // Print BHT
-            printf("\n\n################ Branch History Table #################\n");
-            printf("##   Index  ##  Prediction bits  ## Frequency of use ##\n");
+            printf("\n\n###### Branch History Table #######\n");
+            printf("##   Index  ##  Prediction bits  ##\n");
             for (int i = 0; i < BHTMAX; i++) {
                 printf("##    ");
                 for (int j = 3; j >= 0; j--) {
-                    printf("%d", i >> j & 1);
+                    printf("%d", BranchPred.BHT[i][0] >> j & 1);
                 }
-                printf("  ##         %d         ## %16d ##\n", BranchPred.BHT[i][1], BranchPred.BHT[i][2]);
+                printf("  ##         %d         ##\n", BranchPred.BHT[i][1]);
             }
-            printf("#######################################################\n");
+            printf("###################################\n");
             // Print BTB
             printf("\n\n################# Branch Target Buffer #################\n");
             printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");

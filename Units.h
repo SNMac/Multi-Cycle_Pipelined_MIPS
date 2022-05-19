@@ -115,8 +115,8 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
     // [i][0] = Branch instruction PC, [i][1] = Branch Target, [i][2] = Frequency (How many times used)
     uint32_t DP[BTBMAX][3];  // Direction Predictor
     // [i][0] = Branch instruction PC, [i][1] = Prediction bits, [i][2] = Frequency (How many times used)
-    uint8_t BHT[BHTMAX][3];  // Branch History table (2^GHRMAX size)
-    // [i][0] = GHR index, [i][1] = Prediction bits, [i][2] = Frequency (How many times used)
+    uint8_t BHT[BHTMAX][2];  // Branch History table (2^GHRMAX size)
+    // [i][0] = 0000 ~ 1111, [i][1] = Prediction bits
     bool GHR[4];  // Global History Register (4 bits)
 }BRANCH_PREDICT;
 

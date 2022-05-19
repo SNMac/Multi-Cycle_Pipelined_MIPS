@@ -354,7 +354,6 @@ void GshareCheckBranch(uint32_t PCvalue, const char* Predictbit) {
                     fprintf(stderr, "ERROR: Wrong prediction bit select number\n");
                     exit(EXIT_FAILURE);
             }
-            BranchPred.BHT[BranchPred.BHTindex[0]][2]++;
             return;
         }
     }
