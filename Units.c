@@ -113,7 +113,7 @@ void CheckBranch(uint32_t PCvalue, const char* Predictbit) {  // Check if PC is 
     }
 
     // PC not found in BTB
-    if (BranchPred.BTBindex[0] == BTBMAX && BranchPred.DPindex[0] == BTBMAX) {
+    if (BranchPred.BTBindex[0] == BTBMAX) {
         BranchPred.AddressHit[0] = 0;  // Branch not predicted
         BranchPred.Predict[0] = 0;  // Predict branch not taken
         return;

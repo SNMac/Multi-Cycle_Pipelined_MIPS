@@ -570,12 +570,12 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
     switch (*Predictor) {
         case '1' :  // One-level predictor
             // Print DP
-            printf("\n\n######### Direction Predictor #########\n");
-            printf("##   Branch PCs   ## Prediction bits ##\n");
+            printf("\n\n################### Direction Predictor ###################\n");
+            printf("##   Branch PCs   ## Prediction bits ## Frequency of use ##\n");
             for (int i = 0; i < BranchPred.DPsize; i++) {
-                printf("##    0x%08x  ##        %d        ##\n", BranchPred.DP[i][0], BranchPred.DP[i][1]);
+                printf("##    0x%08x  ##        %d        ## %16d ##\n", BranchPred.DP[i][0], BranchPred.DP[i][1], BranchPred.DP[i][2]);
             }
-            printf("#######################################\n");
+            printf("###########################################################\n");
             // Print BTB
             printf("\n\n################# Branch Target Buffer #################\n");
             printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");
@@ -587,16 +587,16 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
 
         case '2' :  // Gshare predictor
             // Print BHT
-            printf("\n\n###### Branch History Table #######\n");
-            printf("##   Index  ##  Prediction bits  ##\n");
+            printf("\n\n################ Branch History Table #################\n");
+            printf("##   Index  ##  Prediction bits  ## Frequency of use ##\n");
             for (int i = 0; i < BHTMAX; i++) {
                 printf("##    ");
                 for (int j = 3; j >= 0; j--) {
                     printf("%d", i >> j & 1);
                 }
-                printf("  ##         %d         ##\n", BranchPred.BHT[i][1]);
+                printf("  ##         %d         ## %16d ##\n", BranchPred.BHT[i][1], BranchPred.BHT[i][2]);
             }
-            printf("###################################\n");
+            printf("#######################################################\n");
             // Print BTB
             printf("\n\n################# Branch Target Buffer #################\n");
             printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");
@@ -607,7 +607,14 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             break;
 
         case '3' :
-            // Print nothing
+            // Print BTB
+            printf("\n\n################# Branch Target Buffer #################\n");
+            printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");
+            for (int i = 0; i < BranchPred.BTBsize; i++) {
+                printf("## 0x%08x ##    0x%08x    ## %16d ##\n", BranchPred.BTB[i][0], BranchPred.BTB[i][1], BranchPred.BTB[i][2]);
+            }
+            printf("########################################################\n");
+            break;
             break;
 
         case '4' :

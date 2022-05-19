@@ -83,6 +83,7 @@ void OnelevelID(const char* Predictbit, const char* Counter) {
                      idex[1].MemRead, idex[1].RegWrite, exmem[1].MemRead, Branch, ctrlSig.Jump[1]);
     if (hzrddetectSig.ControlNOP) {  // adding nop
         memset(&ctrlSig, 0, sizeof(CONTROL_SIGNAL));
+        Branch = 0;
     }
 
     // Avoid ID-WB hazard
