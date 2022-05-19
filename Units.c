@@ -400,6 +400,7 @@ void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, c
             }
             else {  // Branch not taken
                 BranchPred.GHR[0] = 0;
+                counting.nottakenBranch++;
             }
         }
     }
