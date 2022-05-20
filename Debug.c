@@ -364,7 +364,7 @@ void printRformat(void) {
 
 void printIDforward(void) {
     if (idfwrdSig.IDForwardA[1] == 1 && idfwrdSig.IDForwardA[0] == 1) {
-        printf("<Register Read data1 forwarded from ID/EX pipeline>\n");
+        printf("<Register Read data1 forwarded from ID/EX pipeline upperimm>\n");
     }
     else if (idfwrdSig.IDForwardA[1] == 1 && idfwrdSig.IDForwardA[0] == 0) {
         if (idfwrdSig.EXMEMupperimmA) {
