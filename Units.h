@@ -162,7 +162,7 @@ void ALUCtrlUnit(uint8_t funct, char ALUOp);  // ALU control unit
 void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
                  bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]);  // Forward unit (EX, MEM hazard)
 void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
-                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]);  // Branch Forward unit (ID hazard by beq, bne)
+                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite, const bool IDEXMemtoReg[], const bool EXMEMMemtoReg[]);  // Branch Forward unit (ID hazard by beq, bne)
 void MEMForwardUnit(uint8_t EXMEMrt, uint8_t MEMWBWritereg, bool EXMEMMemWrite, bool MEMWBMemRead);
 void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t IDEXWritereg, uint8_t EXMEMWritereg,
                     bool IDEXMemRead, bool IDEXRegWrite, bool EXMEMMemRead, bool Branch, bool Jump);  // Hazard detection unit

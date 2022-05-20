@@ -1064,13 +1064,13 @@ void ForwardUnit(uint8_t IDEXrt, uint8_t IDEXrs, uint8_t EXMEMWritereg, uint8_t 
 }
 
 void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t EXMEMWritereg, uint8_t MEMWBWritereg,
-                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite, const bool EXMEMMemtoReg[]) {
+                   bool IDEXRegWrite, bool EXMEMRegWrite, bool MEMWBRegWrite, const bool IDEXMemtoReg[], const bool EXMEMMemtoReg[]) {
     memset(&idfwrdSig, 0, sizeof(ID_FORWARD_SIGNAL));
     // ID hazard
-    if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs)) {
+    if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrs) && (IDEXMemtoReg[1] & IDEXMemtoReg[0])) {
         idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[0] = 1;  // IDForwardA = 11
     }
-    if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt)) {
+    if (IDEXRegWrite && (IDEXWritereg != 0) && (IDEXWritereg == IFIDrt) && (IDEXMemtoReg[1] & IDEXMemtoReg[0])) {
         idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[0] = 1;  // IDForwardB = 11
     }
 

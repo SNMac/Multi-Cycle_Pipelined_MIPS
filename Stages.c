@@ -97,11 +97,11 @@ void OnelevelID(const char* Predictbit, const char* Counter) {
 
     // Check branch forwarding
     IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
-                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, idex[1].MemtoReg, exmem[1].MemtoReg);
     uint32_t IDForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
     uint32_t IDForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
-    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].Rrs, idfwrdSig.IDForwardA);
-    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].Rrt, idfwrdSig.IDForwardB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardB);
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
@@ -223,11 +223,11 @@ void GshareID(const char* Predictbit, const char* Counter) {
 
     // Check branch forwarding
     IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
-                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, idex[1].MemtoReg, exmem[1].MemtoReg);
     uint32_t IDForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
     uint32_t IDForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
-    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].Rrs, idfwrdSig.IDForwardA);
-    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].Rrt, idfwrdSig.IDForwardB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardB);
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
@@ -347,11 +347,11 @@ void AlwaysTakenID(void) {
 
     // Check branch forwarding
     IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
-                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, idex[1].MemtoReg, exmem[1].MemtoReg);
     uint32_t IDForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
     uint32_t IDForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
-    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].Rrs, idfwrdSig.IDForwardA);
-    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].Rrt, idfwrdSig.IDForwardB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardB);
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
@@ -468,11 +468,11 @@ void AlwaysnotTakenID() {
 
     // Check branch forwarding
     IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
-                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, idex[1].MemtoReg, exmem[1].MemtoReg);
     uint32_t IDForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
     uint32_t IDForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
-    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].Rrs, idfwrdSig.IDForwardA);
-    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].Rrt, idfwrdSig.IDForwardB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardB);
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
@@ -583,11 +583,11 @@ void BTFNTID(void) {
 
     // Check branch forwarding
     IDForwardUnit(inst.rt, inst.rs, IDEXWritereg,exmem[1].Writereg, memwb[1].Writereg,
-                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, exmem[1].MemtoReg);
+                  idex[1].RegWrite, exmem[1].RegWrite, memwb[1].RegWrite, idex[1].MemtoReg, exmem[1].MemtoReg);
     uint32_t IDForwardAupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmA);
     uint32_t IDForwardBupperimmMUX = MUX(exmem[1].ALUresult, exmem[1].upperimm, fwrdSig.EXMEMupperimmB);
-    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].Rrs, idfwrdSig.IDForwardA);
-    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].Rrt, idfwrdSig.IDForwardB);
+    uint32_t IDForwardAMUX= MUX_4(Regs_return[0], MemtoRegMUX ,IDForwardAupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardA);
+    uint32_t IDForwardBMUX= MUX_4(Regs_return[1], MemtoRegMUX ,IDForwardBupperimmMUX, idex[1].upperimm, idfwrdSig.IDForwardB);
 
     // Comparate two operands
     bool Equal = (IDForwardAMUX == IDForwardBMUX) ? 1 : 0;
