@@ -1080,7 +1080,7 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
         (EXMEMWritereg == IFIDrs)) {
         idfwrdSig.IDForwardA[1] = 1; idfwrdSig.IDForwardA[0] = 0;  // IDForwardA = 10
         if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
-            idfwrdSig.EXMEMupperimmA = 1;
+            idfwrdSig.ID_EXMEMupperimmA = 1;
         }
     }
     if (EXMEMRegWrite && (EXMEMWritereg != 0) &&
@@ -1088,7 +1088,7 @@ void IDForwardUnit(uint8_t IFIDrt, uint8_t IFIDrs, uint8_t IDEXWritereg, uint8_t
         (EXMEMWritereg == IFIDrt)) {
         idfwrdSig.IDForwardB[1] = 1; idfwrdSig.IDForwardB[0] = 0;  // IDForwardB = 10
         if (EXMEMMemtoReg[1] & EXMEMMemtoReg[0]) {
-            idfwrdSig.EXMEMupperimmB = 1;
+            idfwrdSig.ID_EXMEMupperimmB = 1;
         }
     }
 
@@ -1132,7 +1132,7 @@ void HazardDetectUnit(uint8_t IFIDrs, uint8_t IFIDrt, uint8_t IDEXrt, uint8_t ID
         hzrddetectSig.BTBnotWrite = 1;
         hzrddetectSig.ControlNOP = 1;
     }
-    // EXMEM branch(jump) hazard
+    // EXMEM branch(jump) hazard (for lw instruction)
     if (EXMEMMemRead && (Branch | Jump) && ((EXMEMWritereg == IFIDrs) || (EXMEMWritereg == IFIDrt))) {
         hzrddetectSig.PCnotWrite = 1;
         hzrddetectSig.IFIDnotWrite = 1;

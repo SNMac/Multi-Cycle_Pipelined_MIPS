@@ -90,7 +90,7 @@ typedef struct _FORWARD_SIGNAL {  // Forward unit signals
 }FORWARD_SIGNAL;
 
 typedef struct _ID_FORWARD_SIGNAL {  // Branch forward unit signals
-    bool IDForwardA[2], IDForwardB[2], EXMEMupperimmA, EXMEMupperimmB;
+    bool IDForwardA[2], IDForwardB[2], ID_EXMEMupperimmA, ID_EXMEMupperimmB;
 }ID_FORWARD_SIGNAL;
 
 typedef struct _MEM_FORWARD_SIGNAL {

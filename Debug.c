@@ -367,7 +367,7 @@ void printIDforward(void) {
         printf("<Register Read data1 forwarded from ID/EX pipeline upperimm>\n");
     }
     else if (idfwrdSig.IDForwardA[1] == 1 && idfwrdSig.IDForwardA[0] == 0) {
-        if (idfwrdSig.EXMEMupperimmA) {
+        if (idfwrdSig.ID_EXMEMupperimmA) {
             printf("<Register Read data1 forwarded from EX/MEM pipeline upperimm>\n");
             return;
         }
@@ -381,7 +381,7 @@ void printIDforward(void) {
         printf("<Register Read data2 forwarded from ID/EX pipeline>\n");
     }
     else if (idfwrdSig.IDForwardB[1] == 1 && idfwrdSig.IDForwardB[0] == 0) {
-        if (idfwrdSig.EXMEMupperimmB) {
+        if (idfwrdSig.ID_EXMEMupperimmB) {
             printf("<Register Read data2 forwarded from EX/MEM pipeline upperimm>\n");
             return;
         }
