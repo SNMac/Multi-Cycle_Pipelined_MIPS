@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
 
         FileSelect(&filename);
         PredictorSelector = PredSelect();
-        if (PredictorSelector == '1' || PredictorSelector == '2') {
+        if (PredictorSelector == '1' || PredictorSelector == '2' || PredictorSelector == '3') {
             PredictionBitSelector = PBSelect();
             if (PredictionBitSelector == '2') {
                 CounterSelector = CounterSelect();
@@ -98,14 +98,18 @@ int main(int argc, char* argv[]) {
                 break;
 
             case '3' :
-                AlwaysTaken();
+                LocalPredict(&PredictionBitSelector, &CounterSelector);
                 break;
 
             case '4' :
-                AlwaysnotTaken();
+                AlwaysTaken();
                 break;
 
             case '5' :
+                AlwaysnotTaken();
+                break;
+
+            case '6' :
                 BTFNT();
                 break;
 
@@ -211,14 +215,15 @@ char PredSelect(void) {
     char retVal;
     printf("\n#############################################################################\n");
     printf("1 : One-level Branch Predictor, 2 : Two-level Global History Branch Predictor\n");
-    printf("3 : Always Taken Predictor,     4 : Always Not Taken Predictor               \n");
-    printf("            5 : Backward Taken, Forward Not Taken Predictor                  \n");
+    printf("            3 : Two-level Local History Branch Predictor                     \n");
+    printf("4 : Always Taken Predictor,     5 : Always Not Taken Predictor               \n");
+    printf("            6 : Backward Taken, Forward Not Taken Predictor                  \n");
     printf("#############################################################################\n");
     while (1) {
         printf("\nSelect branch predictor : ");
         scanf(" %c", &retVal);
         getchar();
-        if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4' || retVal == '5') {
+        if (retVal == '1' || retVal == '2' || retVal == '3' || retVal == '4' || retVal == '5' || retVal == '6') {
             return retVal;
         }
         else {
@@ -320,6 +325,33 @@ void GsharePredict(const char* Predictbit, const char* Counter) {
     }
 }
 
+// Local predictor execute
+void LocalPredict(const char* Predictbit, const char* Counter) {
+    while(1) {
+        if (!(ifid[0].valid | idex[0].valid | exmem[0].valid | memwb[0].valid)) {
+            return;
+        }
+        LocalIF(Predictbit);
+        LocalID(Predictbit, Counter);
+        EX();
+        MEM();
+        WB();
+        printIF(3);
+        printID(3, Predictbit, Counter);
+        printEX();
+        printMEM();
+        printWB();
+        printnextPC();
+
+        countingFormat();
+        LocalPipelineHandsOver();
+        DebugPipelineHandsOver();
+
+        counting.cycle++;
+        printf("\n================================ CC %d ================================\n", counting.cycle);
+    }
+}
+
 // Always taken predictor execute
 void AlwaysTaken(void) {
     while(1) {
@@ -332,8 +364,8 @@ void AlwaysTaken(void) {
         EX();
         MEM();
         WB();
-        printIF(3);
-        printID(3, 0, 0);
+        printIF(4);
+        printID(4, 0, 0);
         printEX();
         printMEM();
         printWB();
@@ -360,8 +392,8 @@ void AlwaysnotTaken(void) {
         EX();
         MEM();
         WB();
-        printIF(4);
-        printID(4, 0, 0);
+        printIF(5);
+        printID(5, 0, 0);
         printEX();
         printMEM();
         printWB();
@@ -387,8 +419,8 @@ void BTFNT(void) {
         EX();
         MEM();
         WB();
-        printIF(5);
-        printID(5, 0, 0);
+        printIF(6);
+        printID(6, 0, 0);
         printEX();
         printMEM();
         printWB();
@@ -410,7 +442,7 @@ void Firstinit(const char* Predictbit) {
     memset(&BranchPred, 0, sizeof(BRANCH_PREDICT));
     memset(&counting, 0, sizeof(COUNTING));
     switch (*Predictbit) {
-        case '0' :  // Always taken or  not taken
+        case '0' :  // Always taken or not taken
             break;
 
         case '1' :  // One-bit predictor
@@ -484,6 +516,26 @@ void GsharePipelineHandsOver(void) {
         BranchPred.Predict[1] = BranchPred.Predict[0];
         BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
         BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
+        BranchPred.BHTindex[1] = BranchPred.BHTindex[0];
+        BranchPred.instPC[1] = BranchPred.instPC[0];
+    }
+
+    idex[1] = idex[0];  // ID/EX pipeline hands data to EX
+    exmem[1] = exmem[0];  // EX/MEM pipeline hands data to MEM
+    memwb[1] = memwb[0];  // MEM/WB pipeline hands data to WB
+    return;
+}
+
+void LocalPipelineHandsOver(void) {
+    if (!hzrddetectSig.IFIDnotWrite){
+        ifid[1] = ifid[0];  // IF/ID pipeline hands data to ID
+    }
+
+    if (!hzrddetectSig.BTBnotWrite) {
+        BranchPred.Predict[1] = BranchPred.Predict[0];
+        BranchPred.AddressHit[1] = BranchPred.AddressHit[0];
+        BranchPred.BTBindex[1] = BranchPred.BTBindex[0];
+        BranchPred.LHRindex[1] = BranchPred.LHRindex[0];
         BranchPred.BHTindex[1] = BranchPred.BHTindex[0];
         BranchPred.instPC[1] = BranchPred.instPC[0];
     }
@@ -607,6 +659,28 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             break;
 
         case '3' :
+            // Print LHR
+            printf("\n\n##################### Local History Table ######################\n");
+            printf("##  Branch PCs  ##  Local Branch History  ## Frequency of use ##\n");
+            for (int i = 0; i < BranchPred.LHRsize; i++) {
+                printf("##  0x%08x  ##          ", BranchPred.LHR[i][0]);
+                for (int j = 3; j >= 0; j--) {
+                    printf("%d", BranchPred.LHR[i][1] >> j & 1);
+                }
+                printf("          ##       %10d ##\n", BranchPred.LHR[i][2]);
+            }
+            printf("################################################################\n");
+            // Print BHT
+            printf("\n\n###### Branch History Table #######\n");
+            printf("##   Index  ##  Prediction bits  ##\n");
+            for (int i = 0; i < BHTMAX; i++) {
+                printf("##    ");
+                for (int j = 3; j >= 0; j--) {
+                    printf("%d", BranchPred.BHT[i][0] >> j & 1);
+                }
+                printf("  ##         %d         ##\n", BranchPred.BHT[i][1]);
+            }
+            printf("###################################\n");
             // Print BTB
             printf("\n\n################# Branch Target Buffer #################\n");
             printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");
@@ -618,10 +692,21 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             break;
 
         case '4' :
-            // Print nothing
+            // Print BTB
+            printf("\n\n################# Branch Target Buffer #################\n");
+            printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");
+            for (int i = 0; i < BranchPred.BTBsize; i++) {
+                printf("## 0x%08x ##    0x%08x    ## %16d ##\n", BranchPred.BTB[i][0], BranchPred.BTB[i][1], BranchPred.BTB[i][2]);
+            }
+            printf("########################################################\n");
+            break;
             break;
 
         case '5' :
+            // Print nothing
+            break;
+
+        case '6' :
             // Print BTB
             printf("\n\n################# Branch Target Buffer #################\n");
             printf("## Branch PCs ## Predicted target ## Frequency of use ##\n");
@@ -663,14 +748,18 @@ void printFinalresult(const char* Predictor, const char* Predictbit, const char*
             break;
 
         case '3' :
-            printf("Branch Predictor : Always taken\n");
+            printf("Branch Predictor : Local\n");
             break;
 
         case '4' :
-            printf("Branch Predictor : Always not-taken\n");
+            printf("Branch Predictor : Always taken\n");
             break;
 
         case '5' :
+            printf("Branch Predictor : Always not-taken\n");
+            break;
+
+        case '6' :
             printf("Branch Predictor : Backward Taken, Forward Not Taken\n");
             break;
     }

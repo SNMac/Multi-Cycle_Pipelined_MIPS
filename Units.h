@@ -8,7 +8,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #define BTBMAX 16
-#define BHTMAX 16  // 2^GHR
+#define BHTMAX 16  // 2^GLHR
+#define LHRMAX 4
 
 
 /* Instruction */
@@ -110,6 +111,8 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
     int DPindex[2];
     int DPsize;
     int BHTindex[2];
+    int LHRindex[2];
+    int LHRsize;
     int IFBHTindex;
     uint32_t BTB[BTBMAX][3];  // Branch Target Buffer
     // [i][0] = Branch instruction PC, [i][1] = Branch Target, [i][2] = Frequency (How many times used)
@@ -117,7 +120,9 @@ typedef struct _BRANCH_PREDICT {  // Branch prediction unit
     // [i][0] = Branch instruction PC, [i][1] = Prediction bits, [i][2] = Frequency (How many times used)
     uint8_t BHT[BHTMAX][2];  // Branch History table (2^GHRMAX size)
     // [i][0] = 0000 ~ 1111, [i][1] = Prediction bits
-    bool GHR[4];  // Global History Register (4 bits)
+    uint32_t LHR[LHRMAX][3];  // Local History Register (4 branches, 4 bits)
+    // [i][0] = Branch instruction PC, [i][1] = Branch history (4 bits), [i][2] = Frequency (How many times used)
+    bool GLHR[4];  // Global / Local History Register (4 bits)
 }BRANCH_PREDICT;
 
 /* Data units */
@@ -135,11 +140,18 @@ void BranchBufferWrite(uint32_t WritePC, uint32_t Address, const char* Predictbi
 void PBtaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to taken
 void PBnottaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to not taken
 // [Gshare branch predictor]
-void GshareCheckBranch(uint32_t PCvaluePCvalue, const char* Predictbit);  // Check branch in IF stage
+void GshareCheckBranch(uint32_t PCvalue, const char* Predictbit);  // Check branch in IF stage
 void GshareUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit, const char* Counter);  // Update BTB
 void GshareBranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
 void GsharePBtaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to taken
 void GsharePBnottaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to not taken
+// [Local branch predictor]
+bool LocalCheckLHR(uint32_t PCvalue);
+void LocalCheckBranch(uint32_t PCvalue, const char* Predictbit);  // Check branch in IF stage
+void LocalUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr, const char* Predictbit, const char* Counter);
+void LocalBranchBufferWrite(uint32_t WritePC, uint32_t Address);  // Write BranchAddr to BTB
+void LocalPBtaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to taken
+void LocalPBnottaken(uint8_t Predbit, const char* Predictbit, const char* Counter);  // Update Prediction bit to not taken
 // [Always taken predictor]
 void AlwaysTakenCheckBranch(uint32_t PCvalue);  // Check branch in IF stage
 void AlwaysTakenUpdateBranchBuffer(bool Branch, bool PCBranch, uint32_t BranchAddr);  // Update BTB

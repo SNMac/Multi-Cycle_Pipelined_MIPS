@@ -26,6 +26,7 @@ char CounterSelect(void);
 
 void OnelevelPredict(const char* Predictbit, const char* Counter);
 void GsharePredict(const char* Predictbit, const char* Counter);
+void LocalPredict(const char* Predictbit, const char* Counter);
 void AlwaysTaken(void);
 void AlwaysnotTaken(void);
 void BTFNT(void);
@@ -35,6 +36,7 @@ void printnextPC(void);
 
 void OnelevelPipelineHandsOver(void);
 void GsharePipelineHandsOver(void);
+void LocalPipelineHandsOver(void);
 void AlwaysTakenPipelineHandsOver(void);
 void BTFNTPipelineHandsOver(void);
 
