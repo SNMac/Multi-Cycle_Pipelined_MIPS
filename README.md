@@ -1,7 +1,9 @@
 # Multi-Cycle_Pipelined_MIPS
 Multi Cycle Pipelined MIPS processor implemented in C
 
-Single-Cycle_MIPS와 동일한 명령어 지원
+Single-Cycle_MIPS와 동일한 명령어 지원한다.
+
+아래 데이터패스들을 토대로 코드르 작성하였다.
 
 
 전체 데이터패스
