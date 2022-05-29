@@ -20,6 +20,7 @@ IF/ID, ID/EX, EX/MEM, MEM/WB 총 4개의 파이프라인이 존재한다.
 
 
 
+
 아래 데이터패스들을 토대로 코드를 작성하였다.
 
 <img src="https://github.com/SNMac/Multi-Cycle_Pipelined_MIPS/blob/master/Pipelined%20Datapath.jpg?raw=true">
