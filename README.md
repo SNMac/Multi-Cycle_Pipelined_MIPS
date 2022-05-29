@@ -1,6 +1,7 @@
 # Multi-Cycle_Pipelined_MIPS
 Multi Cycle Pipelined MIPS processor implemented in C
 
+파이프라이닝된 다중 사이클 MIPS 프로세서를 구현한 코드이다.
 Single-Cycle_MIPS와 동일한 명령어를 지원한다.
 
 IF/ID, ID/EX, EX/MEM, MEM/WB 총 4개의 파이프라인이 존재한다.
