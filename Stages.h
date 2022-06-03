@@ -24,7 +24,7 @@ void EX(void);  // EXecute
 void MEM(void);  // MEMory access
 void WB(void);  // Write Back
 
-// make GLHR index (2^GHRs)
+// make GHR index (2^GHRs)
 uint8_t makeGHRindex(const bool GHR[], uint32_t PCvalue);
 
 #endif //CAMP_PROJECT3_STAGES_H
