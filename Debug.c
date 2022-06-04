@@ -242,7 +242,7 @@ void printMEM(void) {
     }
 
     if (debugmem[1].MemRead) {
-        printf("Memory[0x%08x] load -> 0x%x (%d)\n", debugmem[1].Addr, debugmem[1].Writedata, debugmem[1].Writedata);
+        printf("Memory[0x%08x] load -> 0x%x (%d)\n", debugmem[1].Addr, debugmem[1].Readdata, debugmem[1].Readdata);
     }
     else if (debugmem[1].MemWrite) {
         printf("Memory[0x%08x] <- store 0x%x (%d)\n", debugmem[1].Addr, debugmem[1].Writedata, debugmem[1].Writedata);

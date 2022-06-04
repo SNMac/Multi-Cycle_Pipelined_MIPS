@@ -48,6 +48,7 @@ typedef struct _DEBUGMEM {
     uint32_t MEMinst;
     uint32_t Addr;
     uint32_t Writedata;
+    uint32_t Readdata;
     char instprint[100];
 }DEBUGMEM;
 

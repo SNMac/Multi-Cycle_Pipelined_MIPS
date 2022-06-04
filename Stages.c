@@ -847,6 +847,7 @@ void MEM(void) {
     // For visible state
     debugmem[1].MemRead = exmem[1].MemRead; debugmem[1].MemWrite = exmem[1].MemWrite;
     debugmem[1].Addr = exmem[1].ALUresult; debugmem[1].Writedata = MemWriteDataMUX;
+    debugmem[1].Readdata = Readdata;
     return;
 }
 
